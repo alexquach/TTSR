@@ -203,6 +203,9 @@ class TrainSet(Dataset):
         self.input_transform = input_transform
         self.ref_transform = ref_transform
 
+    def __len__(self):
+        return self.image_datasets.shape[0]
+
     def __getitem__(self, index):
         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
