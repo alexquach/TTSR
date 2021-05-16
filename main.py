@@ -13,10 +13,10 @@ warnings.filterwarnings('ignore')
 
 
 if __name__ == '__main__':
-    ### make save_dir
+    # make save_dir
     _logger = mkExpDir(args)
 
-    ### dataloader of training set and testing set
+    # dataloader of training set and testing set
     _dataloader = dataloader.get_dataloader(args) if (not args.test) else None
 
     ### device and model
@@ -25,10 +25,10 @@ if __name__ == '__main__':
     if ((not args.cpu) and (args.num_gpu > 1)):
         _model = nn.DataParallel(_model, list(range(args.num_gpu)))
 
-    ### loss
+    # loss
     _loss_all = get_loss_dict(args, _logger)
 
-    ### trainer
+    # trainer
     t = Trainer(args, _logger, _dataloader, _model, _loss_all)
 
     ### test / eval / train

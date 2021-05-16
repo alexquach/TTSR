@@ -1,11 +1,13 @@
 ### training TTSR
-python main.py --save_dir ./train/CUFED/TTSR \
+python main.py --save_dir ./train/HMDB/TTSR \
                --reset True \
                --log_file_name train.log \
-               --num_gpu 1 \
-               --num_workers 9 \
-               --dataset CUFED \
-               --dataset_dir /home/v-fuyang/Data/CUFED/ \
+               --num_gpu 0 \
+               --num_workers 1 \
+               --dataset HMDB \
+               --image_dataset_dir = "./Data_CDVL_LR_MC_uf_2_ps_72_fn_6_tpn_1000.h5" \
+               --ref_dataset_dir = "./Data_CDVL_HR_uf_2_ps_72_fn_6_tpn_1000.h5" \
+               --upsample_factor = 2 \
                --n_feats 64 \
                --lr_rate 1e-4 \
                --lr_rate_dis 1e-4 \
