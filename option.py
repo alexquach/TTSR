@@ -35,7 +35,7 @@ parser.add_argument('--image_dataset_dir', type=str, default='./Data_CDVL_LR_MC_
                     help='Directory of LR image dataset')
 parser.add_argument('--ref_dataset_dir', type=str, default='./Data_CDVL_HR_uf_2_ps_72_fn_6_tpn_1000.h5',
                     help='Directory of HR image dataset')
-parser.add_argument('--upsample_factor', type=str, default=2,
+parser.add_argument('--upsample_factor', type=int, default=2,
                     help='upsample factor')
 
 # dataloader setting
