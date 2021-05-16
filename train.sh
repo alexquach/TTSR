@@ -5,8 +5,8 @@ python main.py --save_dir ./train/HMDB/TTSR \
                --num_gpu 0 \
                --num_workers 1 \
                --dataset HMDB \
-               --image_dataset_dir = "./Data_CDVL_LR_MC_uf_2_ps_72_fn_6_tpn_1000.h5" \
-               --ref_dataset_dir = "./Data_CDVL_HR_uf_2_ps_72_fn_6_tpn_1000.h5" \
+               --image_dataset_dir ./Data_CDVL_LR_MC_uf_2_ps_72_fn_6_tpn_1000.h5 \
+               --ref_dataset_dir ./Data_CDVL_HR_uf_2_ps_72_fn_6_tpn_1000.h5 \
                --upsample_factor = 2 \
                --n_feats 64 \
                --lr_rate 1e-4 \
