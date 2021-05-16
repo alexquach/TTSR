@@ -33,7 +33,7 @@ def get_dataloader(args):
 
     if (args.dataset == 'HMDB'):
         # (self, image_dataset_dir, ref_dataset_dir, upscale_factor, input_transform=None, ref_transform=None)
-        data_train = getattr(m, 'TrainSet')(image_dir, ref_dir, 2)
+        data_train = getattr(m, 'TrainSet')(args)
         dataloader_train = DataLoader(
             data_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         dataloader_test = {}
