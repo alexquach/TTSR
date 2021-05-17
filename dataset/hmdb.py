@@ -63,10 +63,6 @@ class ToTensor(object):
                 'Ref': torch.from_numpy(Ref).float(),
                 'Ref_sr': torch.from_numpy(Ref_sr).float()}
 
-
-
-
-
 class TestSet(Dataset):
     def __init__(self, args, input_transform=None, ref_transform=None):
         super(TestSet, self).__init__()
@@ -160,30 +156,21 @@ class TrainSet(Dataset):
         # lr = lr.astype(np.float32)
         # ref = ref.astype(np.float32)
         lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
-        hr = self.ref_datasets[index, [4], :, :]  # HR center frame
-
-        # convert to tensor
         lr = torch.from_numpy(lr)
-        hr = torch.from_numpy(hr)
-        # lr_up = torch.from_numpy(lr_up)
-        # ref = torch.from_numpy(ref)
-        # ref_dup = torch.from_numpy(ref_dup)
 
         # LR Scaled up (x2)
-        lr_up = np.apply_along_axis(
-            lambda x: F.interpolate(x, scale_factor=2, mode="bicubic"),
-            axis=1, arr=lr)  # 5 LR_Bic_MC frames [1:5]  
+        lr_up = F.interpolate(lr, scale_factor=2, mode="bicubic") # 5 LR_Bic_MC frames [1:5]  
 
-        # ref frame
+        hr = self.ref_datasets[index, [4], :, :]  # HR center frame
+        hr = torch.from_numpy(hr)
+
+        # Ref frame
         ref = self.ref_datasets[index, [0], :, :]  # HR first frame
+        ref = torch.from_numpy(ref)
         # ref downsample
-        ref_down = np.apply_along_axis(
-            lambda x: F.interpolate(x, scale_factor=0.5, mode="bicubic"),
-            axis=1, arr=ref)  # [0]
+        ref_down = F.interpolate(ref, scale_factor=0.5, mode="bicubic")  # [0]
         # ref down + upsample
-        ref_dup = np.apply_along_axis(
-            lambda x: F.interpolate(x, scale_factor=2, mode="bicubic"),
-            axis=1, arr=ref_down)  # [0]
+        ref_dup = F.interpolate(ref_down, scale_factor=2, mode="bicubic") # [0]
 
 
         #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
