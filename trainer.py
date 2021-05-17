@@ -74,14 +74,31 @@ class Trainer():
             ref_sr = sample_batched['Ref_sr']
 
             # TODO: make better fusion module
-            list_comp_temp = [self.model(
-              lr=lr[:, [i], :, :].repeat(1, 3, 1, 1), 
-              lrsr=lr_sr[:, [5], :, :].repeat(1, 3, 1, 1),
-              ref=ref.repeat(1, 3, 1, 1), 
-              refsr=ref_sr.repeat(1, 3, 1, 1)) for i in range(5)]
-            # print(torch.tensor(list_comp_temp).shape)
-            # print(f"yeet: {torch.mean(list_comp_temp, dim=0)}")
-            sr, S, T_lv3, T_lv2, T_lv1 = torch.mean(list_comp_temp, dim=0)
+            sr_list=[]
+            S_list=[]
+            T_lv3_list=[]
+            T_lv2_list=[]
+            T_lv1_list=[]
+            for i in range(5):
+              a, b, c, d, e = self.model(
+                lr=lr[:, [i], :, :].repeat(1, 3, 1, 1), 
+                lrsr=lr_sr[:, [i], :, :].repeat(1, 3, 1, 1),
+                ref=ref.repeat(1, 3, 1, 1), 
+                refsr=ref_sr.repeat(1, 3, 1, 1)
+              )
+
+              sr_list.append(a)
+              S_list.append(b)
+              T_lv3_list.append(c)
+              T_lv2_list.append(d)
+              T_lv1_list.append(e)
+
+            sr = torch.mean(torch.vstack(sr_list), dim=0)
+            S = torch.mean(torch.vstack(S_list), dim=0)
+            T_lv3 = torch.mean(torch.vstack(T_lv3_list), dim=0)
+            T_lv2 = torch.mean(torch.vstack(T_lv2_list), dim=0)
+            T_lv1 = torch.mean(torch.vstack(T_lv1_list), dim=0)
+            #sr, S, T_lv3, T_lv2, T_lv1 = torch.mean(list_comp_temp, dim=0)
 
             ### calc loss
             is_print = ((i_batch + 1) % self.args.print_every == 0) ### flag of print

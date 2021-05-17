@@ -160,6 +160,7 @@ class TrainSet(Dataset):
 
         # LR Scaled up (x2)
         lr_up = F.interpolate(lr, scale_factor=2, mode="bicubic") # 5 LR_Bic_MC frames [1:5]  
+        lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
 
         hr = self.ref_datasets[index:index+1, [4], :, :]  # HR center frame
         hr = torch.from_numpy(hr)
@@ -169,10 +170,9 @@ class TrainSet(Dataset):
         ref = ref.astype(np.float32)
         ref = torch.from_numpy(ref)
         # ref downsample
-        ref_down = F.interpolate(ref, scale_factor=0.5, mode="bicubic")  # [0]
+        ref_down = F.interpolate(ref, scale_factor=0.25, mode="bicubic")  # [0]
         # ref down + upsample
-        ref_dup = F.interpolate(ref_down, scale_factor=2, mode="bicubic") # [0]
-
+        ref_dup = F.interpolate(ref_down, scale_factor=4, mode="bicubic") # [0]
 
         #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
         # lr = lr / 255.0
