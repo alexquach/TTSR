@@ -12,6 +12,35 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.utils as utils
 
+def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
+    sr_list=[]
+    S_list=[]
+    T_lv3_list=[]
+    T_lv2_list=[]
+    T_lv1_list=[]
+
+    # for each frame
+    for i in range(5):
+        # get TTSR output for each frame
+        a, b, c, d, e = model(
+            lr=lr[:, [i], :, :].repeat(1, 3, 1, 1), 
+            lrsr=lr_sr[:, [i], :, :].repeat(1, 3, 1, 1),
+            ref=ref.repeat(1, 3, 1, 1), 
+            refsr=ref_sr.repeat(1, 3, 1, 1)
+        )
+
+        sr_list.append(a)
+        S_list.append(b)
+        T_lv3_list.append(c)
+        T_lv2_list.append(d)
+        T_lv1_list.append(e)
+
+
+    sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
+    S = torch.mean(torch.stack(S_list, dim=0), dim=0)
+    T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
+    T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
+    T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
 
 class Trainer():
     def __init__(self, args, logger, dataloader, model, loss_all):
@@ -75,38 +104,7 @@ class Trainer():
 
             hr = hr.repeat(1, 3, 1, 1)
             # TODO: make better fusion module
-            sr_list=[]
-            S_list=[]
-            T_lv3_list=[]
-            T_lv2_list=[]
-            T_lv1_list=[]
-            for i in range(5):
-              a, b, c, d, e = self.model(
-                lr=lr[:, [i], :, :].repeat(1, 3, 1, 1), 
-                lrsr=lr_sr[:, [i], :, :].repeat(1, 3, 1, 1),
-                ref=ref.repeat(1, 3, 1, 1), 
-                refsr=ref_sr.repeat(1, 3, 1, 1)
-              )
-
-              sr_list.append(a)
-              S_list.append(b)
-              T_lv3_list.append(c)
-              T_lv2_list.append(d)
-              T_lv1_list.append(e)
-
-            sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
-            S = torch.mean(torch.stack(S_list, dim=0), dim=0)
-            T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
-            T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
-            T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
-
-            print("start")
-            print(sr.shape)
-            print(S.shape)
-            print(T_lv3.shape)
-            print(T_lv2.shape)
-            print(T_lv1.shape)
-            #sr, S, T_lv3, T_lv2, T_lv1 = torch.mean(list_comp_temp, dim=0)
+            sr, S, T_lv3, T_lv2, T_lv1 = naive_averaging(self.model, lr, lr_sr, hr, ref, ref_sr)
 
             ### calc loss
             is_print = ((i_batch + 1) % self.args.print_every == 0) ### flag of print
@@ -154,7 +152,7 @@ class Trainer():
     def evaluate(self, current_epoch=0):
         self.logger.info('Epoch ' + str(current_epoch) + ' evaluation process...')
 
-        if (self.args.dataset == 'CUFED'):
+        if (self.args.dataset == 'HMDB'):
             self.model.eval()
             with torch.no_grad():
                 psnr, ssim, cnt = 0., 0., 0
