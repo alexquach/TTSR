@@ -19,7 +19,7 @@ python main.py --save_dir ./train/HMDB/TTSR \
                --batch_size 9 \
                --num_init_epochs 2 \
                --num_epochs 50 \
-               --print_every 1 \
+               --print_every 50 \
                --save_every 10 \
                --val_every 10 \
                --train_crop_size 18

@@ -12,7 +12,46 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.utils as utils
 
+def conv1x1(in_channels, out_channels, stride=1):
+    return nn.Conv2d(in_channels, out_channels, kernel_size=1,
+                     stride=stride, padding=0, bias=True)
+
 def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
+    sr_list=[]
+    S_list=[]
+    T_lv3_list=[]
+    T_lv2_list=[]
+    T_lv1_list=[]
+
+    # TODO: Make sure gradients propagate, aka not doing non-differentiable things
+
+    # for each frame
+    for i in range(5):
+        # get TTSR output for each frame
+        a, b, c, d, e = model(
+            lr=lr[:, [i], :, :].repeat(1, 3, 1, 1), 
+            lrsr=lr_sr[:, [i], :, :].repeat(1, 3, 1, 1),
+            ref=ref.repeat(1, 3, 1, 1), 
+            refsr=ref_sr.repeat(1, 3, 1, 1)
+        )
+
+        sr_list.append(a)
+        S_list.append(b)
+        T_lv3_list.append(c)
+        T_lv2_list.append(d)
+        T_lv1_list.append(e)
+
+    # Stack: [frame, batch_size, channels, height, width]
+    # Mean: [batch_size, channels, height, width]
+    sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
+    S = torch.mean(torch.stack(S_list, dim=0), dim=0)
+    T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
+    T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
+    T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
+
+    return sr, S, T_lv3, T_lv2, T_lv1
+
+def conv1x1_fusion(model, lr, lr_sr, hr, ref, ref_sr):
     sr_list=[]
     S_list=[]
     T_lv3_list=[]
@@ -35,12 +74,15 @@ def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
         T_lv2_list.append(d)
         T_lv1_list.append(e)
 
+    # Stack: [frame, batch_size, channels, height, width]
+    # i.e.: [5, 9, 3, 72, 72]
+    sr_frames = torch.stack(sr_list, dim=0)
+    S_frames = torch.stack(S_list, dim=0)
+    T_lv3_frames = torch.stack(T_lv3_list, dim=0)
+    T_lv2_frames = torch.stack(T_lv2_list, dim=0)
+    T_lv1_frames = torch.stack(T_lv1_list, dim=0)
 
-    sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
-    S = torch.mean(torch.stack(S_list, dim=0), dim=0)
-    T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
-    T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
-    T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
+
 
     return sr, S, T_lv3, T_lv2, T_lv1
 
@@ -167,7 +209,7 @@ class Trainer():
                     ref = sample_batched['Ref']
                     ref_sr = sample_batched['Ref_sr']
 
-                    sr, _, _, _, _ = self.model(lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+                    sr, _, _, _, _ = naive_averaging(self.model, lr, lr_sr, hr, ref, ref_sr)
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5
                         sr_save = np.transpose(sr_save.squeeze().round().cpu().numpy(), (1, 2, 0)).astype(np.uint8)
