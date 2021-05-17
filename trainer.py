@@ -93,11 +93,18 @@ class Trainer():
               T_lv2_list.append(d)
               T_lv1_list.append(e)
 
-            sr = torch.mean(torch.vstack(sr_list), dim=0)
-            S = torch.mean(torch.vstack(S_list), dim=0)
-            T_lv3 = torch.mean(torch.vstack(T_lv3_list), dim=0)
-            T_lv2 = torch.mean(torch.vstack(T_lv2_list), dim=0)
-            T_lv1 = torch.mean(torch.vstack(T_lv1_list), dim=0)
+            sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
+            S = torch.mean(torch.stack(S_list, dim=0), dim=0)
+            T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
+            T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
+            T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
+
+            print("start")
+            print(sr.shape)
+            print(S.shape)
+            print(T_lv3.shape)
+            print(T_lv2.shape)
+            print(T_lv1.shape)
             #sr, S, T_lv3, T_lv2, T_lv1 = torch.mean(list_comp_temp, dim=0)
 
             ### calc loss
