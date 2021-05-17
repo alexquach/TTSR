@@ -155,22 +155,30 @@ class TrainSet(Dataset):
         return self.image_datasets.shape[0]
 
     def __getitem__(self, index):
-        
         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
-
+        # LR
         lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
+
+        # LR Scaled up (x2)
         lr_up = np.apply_along_axis(
-            lambda x: resize_(x, hr_width, hr_height),
+            lambda x: F.interpolate(x, scale_factor=2, mode="bicubic"),
             axis=1, arr=lr)  # 5 LR_Bic_MC frames [1:5]
+        
+        # HR
         hr = self.ref_datasets[index, [4], :, :]  # HR center frame
+
+        # ref frame
         ref = self.ref_datasets[index, [0], :, :]  # HR first frame
+        # ref downsample
         ref_down = np.apply_along_axis(
-            lambda x: resize_(x, hr_width//self.upsample_factor, hr_height//self.upsample_factor),
-            axis=1, arr=ref)  # [0] #TODO change if uf is different
+            lambda x: F.interpolate(x, scale_factor=0.5, mode="bicubic"),
+            axis=1, arr=ref)  # [0]
+        # ref down + upsample
         ref_dup = np.apply_along_axis(
-            lambda x: resize_(x, hr_width, hr_height),
+            lambda x: F.interpolate(x, scale_factor=2, mode="bicubic"),
             axis=1, arr=ref_down)  # [0]
+
         lr = lr.astype(np.float32)
         ref = ref.astype(np.float32)
 
