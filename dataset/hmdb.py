@@ -157,6 +157,17 @@ class TrainSet(Dataset):
     def __getitem__(self, index):
         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
+        # lr = lr.astype(np.float32)
+        # ref = ref.astype(np.float32)
+
+        # convert to tensor
+        lr = torch.from_numpy(lr)
+        lr_up = torch.from_numpy(lr_up)
+        hr = torch.from_numpy(hr)
+        ref = torch.from_numpy(ref)
+        ref_dup = torch.from_numpy(ref_dup)
+
+
         # LR
         lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
 
@@ -179,19 +190,11 @@ class TrainSet(Dataset):
             lambda x: F.interpolate(x, scale_factor=2, mode="bicubic"),
             axis=1, arr=ref_down)  # [0]
 
-        lr = lr.astype(np.float32)
-        ref = ref.astype(np.float32)
 
         #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
         # lr = lr / 255.0
         #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
         # ref = ref / 255.0
-
-        lr = torch.from_numpy(lr)
-        lr_up = torch.from_numpy(lr_up)
-        hr = torch.from_numpy(hr)
-        ref = torch.from_numpy(ref)
-        ref_dup = torch.from_numpy(ref_dup)
 
         sample = {'LR': lr,  # LR_MC
                   'LR_sr': lr_up,  # LR_Bic_MC
