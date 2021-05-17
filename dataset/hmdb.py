@@ -151,6 +151,7 @@ class TrainSet(Dataset):
         return self.image_datasets.shape[0]
 
     def __getitem__(self, index):
+        # [total_indices, 6_frames, width, height]
         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
         # lr = lr.astype(np.float32)
@@ -178,11 +179,11 @@ class TrainSet(Dataset):
         #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
         # ref = ref / 255.0
 
-        sample = {'LR': lr,  # LR_MC [5]
-                  'LR_sr': lr_up,  # LR_Bic_MC [5]
-                  'HR': hr,  # HR [1]
-                  'Ref': ref,  # HR [1]
-                  'Ref_sr': ref_dup}  # HR_Bic [1]
+        sample = {'LR': lr.squeeze(0),  # LR_MC [5]
+                  'LR_sr': lr_up.squeeze(0),  # LR_Bic_MC [5]
+                  'HR': hr.squeeze(0),  # HR [1]
+                  'Ref': ref.squeeze(0),  # HR [1]
+                  'Ref_sr': ref_dup.squeeze(0)}  # HR_Bic [1]
 
         # if self.transform:
         #     sample = self.transform(sample)
