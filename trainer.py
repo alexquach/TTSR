@@ -208,6 +208,7 @@ class Trainer():
                     hr = sample_batched['HR']
                     ref = sample_batched['Ref']
                     ref_sr = sample_batched['Ref_sr']
+                    hr = hr.repeat(1, 3, 1, 1)
 
                     sr, _, _, _, _ = naive_averaging(self.model, lr, lr_sr, hr, ref, ref_sr)
                     if (self.args.eval_save_results):
@@ -216,6 +217,8 @@ class Trainer():
                         imsave(os.path.join(self.args.save_dir, 'save_results', str(i_batch).zfill(5)+'.png'), sr_save)
                     
                     ### calculate psnr and ssim
+                    sr = sr.squeeze(0)
+                    hr = hr.squeeze(0)
                     _psnr, _ssim = calc_psnr_and_ssim(sr.detach(), hr.detach())
 
                     psnr += _psnr
