@@ -154,7 +154,6 @@ class TrainSet(Dataset):
         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
         # lr = lr.astype(np.float32)
-        # ref = ref.astype(np.float32)
         lr = self.image_datasets[index:index+1, 1:, :, :]  # 5 LR_MC frames [1:5]
         lr = torch.from_numpy(lr)
 
@@ -166,6 +165,7 @@ class TrainSet(Dataset):
 
         # Ref frame
         ref = self.ref_datasets[index:index+1, [0], :, :]  # HR first frame
+        ref = ref.astype(np.float32)
         ref = torch.from_numpy(ref)
         # ref downsample
         ref_down = F.interpolate(ref, scale_factor=0.5, mode="bicubic")  # [0]
@@ -178,14 +178,14 @@ class TrainSet(Dataset):
         #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
         # ref = ref / 255.0
 
-        sample = {'LR': lr,  # LR_MC
-                  'LR_sr': lr_up,  # LR_Bic_MC
-                  'HR': hr,  # HR
-                  'Ref': ref,  # HR
-                  'Ref_sr': ref_dup}  # HR_Bic
+        sample = {'LR': lr,  # LR_MC [5]
+                  'LR_sr': lr_up,  # LR_Bic_MC [5]
+                  'HR': hr,  # HR [1]
+                  'Ref': ref,  # HR [1]
+                  'Ref_sr': ref_dup}  # HR_Bic [1]
 
-        if self.transform:
-            sample = self.transform(sample)
+        # if self.transform:
+        #     sample = self.transform(sample)
         return sample
 
 

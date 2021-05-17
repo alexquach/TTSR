@@ -72,7 +72,11 @@ class Trainer():
             hr = sample_batched['HR']
             ref = sample_batched['Ref']
             ref_sr = sample_batched['Ref_sr']
-            sr, S, T_lv3, T_lv2, T_lv1 = self.model(lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+
+            # TODO: make better fusion module
+            list_comp_temp = [self.model(lr=lr[i], lrsr=lr_sr[5], ref=ref, refsr=ref_sr) for i in range(5)]
+            print(torch.tensor(list_comp_temp).shape)
+            sr, S, T_lv3, T_lv2, T_lv1 = torch.mean(list_comp_temp, axis=0)
 
             ### calc loss
             is_print = ((i_batch + 1) % self.args.print_every == 0) ### flag of print
