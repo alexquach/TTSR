@@ -159,25 +159,20 @@ class TrainSet(Dataset):
 
         # lr = lr.astype(np.float32)
         # ref = ref.astype(np.float32)
+        lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
+        hr = self.ref_datasets[index, [4], :, :]  # HR center frame
 
         # convert to tensor
         lr = torch.from_numpy(lr)
-        lr_up = torch.from_numpy(lr_up)
         hr = torch.from_numpy(hr)
-        ref = torch.from_numpy(ref)
-        ref_dup = torch.from_numpy(ref_dup)
-
-
-        # LR
-        lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
+        # lr_up = torch.from_numpy(lr_up)
+        # ref = torch.from_numpy(ref)
+        # ref_dup = torch.from_numpy(ref_dup)
 
         # LR Scaled up (x2)
         lr_up = np.apply_along_axis(
             lambda x: F.interpolate(x, scale_factor=2, mode="bicubic"),
-            axis=1, arr=lr)  # 5 LR_Bic_MC frames [1:5]
-        
-        # HR
-        hr = self.ref_datasets[index, [4], :, :]  # HR center frame
+            axis=1, arr=lr)  # 5 LR_Bic_MC frames [1:5]  
 
         # ref frame
         ref = self.ref_datasets[index, [0], :, :]  # HR first frame
