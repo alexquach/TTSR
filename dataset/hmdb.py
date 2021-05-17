@@ -124,6 +124,10 @@ class TestSet(Dataset):
             sample = self.transform(sample)
         return sample
 
+def resize_(arr, width, height):
+    print(f"width: {width} and height: {height}")
+    print(f"arr shape: {arr.shape}")
+    return np.array(Image.fromarray(x).resize((hr_width, hr_height)), Image.BICUBIC)
 
 class TrainSet(Dataset):
     # LR original = LR_MC
@@ -151,20 +155,21 @@ class TrainSet(Dataset):
         return self.image_datasets.shape[0]
 
     def __getitem__(self, index):
+        
         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
+
 
         lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
         lr_up = np.apply_along_axis(
-            lambda x: np.array(Image.fromarray(x).resize((hr_width, hr_height)), Image.BICUBIC), 
+            lambda x: resize_(x, hr_width, hr_height),
             axis=1, arr=lr)  # 5 LR_Bic_MC frames [1:5]
         hr = self.ref_datasets[index, [4], :, :]  # HR center frame
         ref = self.ref_datasets[index, [0], :, :]  # HR first frame
         ref_down = np.apply_along_axis(
-            lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width//self.upsample_factor, hr_height//self.upsample_factor), Image.BICUBIC)),
+            lambda x: resize_(x, hr_width//self.upsample_factor, hr_height//self.upsample_factor),
             axis=1, arr=ref)  # [0] #TODO change if uf is different
         ref_dup = np.apply_along_axis(
-            lambda x: np.array(Image.fromarray(x).resize((hr_width, hr_height), Image.BICUBIC)),
+            lambda x: resize_(x, hr_width, hr_height),
             axis=1, arr=ref_down)  # [0]
         lr = lr.astype(np.float32)
         ref = ref.astype(np.float32)
