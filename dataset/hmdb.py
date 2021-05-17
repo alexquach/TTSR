@@ -126,7 +126,7 @@ class ToTensor(object):
 
 class TestSet(Dataset):
     def __init__(self, args, input_transform=None, ref_transform=None):
-        super(TrainSet, self).__init__()
+        super(TestSet, self).__init__()
 
         self.upsample_factor = args.upsample_factor
 
