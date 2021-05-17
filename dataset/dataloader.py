@@ -39,7 +39,7 @@ def get_dataloader(args):
             data_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         dataloader_test = {}
         for i in range(5):
-            data_test = getattr(m, 'Trainset')(args=args)
+            data_test = getattr(m, 'TrainSet')(args=args)
             dataloader_test[str(i+1)] = DataLoader(data_test, batch_size=1,
                                                    shuffle=False, num_workers=args.num_workers)
         dataloader = {'train': dataloader_train, 'test': dataloader_test}

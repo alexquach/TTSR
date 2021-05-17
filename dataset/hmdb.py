@@ -120,11 +120,6 @@ class TestSet(Dataset):
             sample = self.transform(sample)
         return sample
 
-def resize_(arr, width, height):
-    print(f"width: {width} and height: {height}")
-    print(f"arr shape: {arr.shape}")
-    return np.array(Image.fromarray(arr).resize((hr_width, hr_height)), Image.BICUBIC)
-
 class TrainSet(Dataset):
     # LR original = LR_MC
     # reference_dataset = HR

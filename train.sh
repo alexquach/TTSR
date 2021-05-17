@@ -21,7 +21,8 @@ python main.py --save_dir ./train/HMDB/TTSR \
                --num_epochs 50 \
                --print_every 1 \
                --save_every 10 \
-               --val_every 10
+               --val_every 10 \
+               --train_crop_size 18
 
 
 # ### training TTSR-rec

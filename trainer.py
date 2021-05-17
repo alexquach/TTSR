@@ -42,6 +42,8 @@ def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
     T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
     T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
 
+    return sr, S, T_lv3, T_lv2, T_lv1
+
 class Trainer():
     def __init__(self, args, logger, dataloader, model, loss_all):
         self.args = args
