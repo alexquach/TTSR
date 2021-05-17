@@ -2,7 +2,7 @@
 python main.py --save_dir ./train/HMDB/TTSR \
                --reset True \
                --log_file_name train.log \
-               --num_gpu 0 \
+               --num_gpu 1 \
                --num_workers 1 \
                --dataset HMDB \
                --image_dataset_dir ./Data_CDVL_LR_MC_uf_2_ps_72_fn_6_tpn_1000.h5 \
