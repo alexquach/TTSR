@@ -32,7 +32,9 @@ class Discriminator(nn.Module):
         self.conv10 = conv3x3(512, 512, 2)
         self.LReLU10 = nn.LeakyReLU(0.2)
         
-        self.fc1 = nn.Linear(in_size//32 * in_size//32 * 512, 1024)
+        #self.fc1 = nn.Linear(in_size//32 * in_size//32 * 512, 1024)
+        # hard coding for our patch size
+        self.fc1 = nn.Linear(9 * 512, 1024)
         self.LReLU11 = nn.LeakyReLU(0.2)
         self.fc2 = nn.Linear(1024, 1)
         

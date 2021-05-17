@@ -73,6 +73,7 @@ class Trainer():
             ref = sample_batched['Ref']
             ref_sr = sample_batched['Ref_sr']
 
+            hr = hr.repeat(1, 3, 1, 1)
             # TODO: make better fusion module
             sr_list=[]
             S_list=[]

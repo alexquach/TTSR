@@ -163,6 +163,7 @@ class TrainSet(Dataset):
         lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
 
         hr = self.ref_datasets[index:index+1, [4], :, :]  # HR center frame
+        hr = hr.astype(np.float32)
         hr = torch.from_numpy(hr)
 
         # Ref frame
