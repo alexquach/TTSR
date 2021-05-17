@@ -1,6 +1,7 @@
 from loss import discriminator
 
 import torch
+import lpips
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -29,7 +30,16 @@ class PerceptualLoss(nn.Module):
         return loss
 
 
-class TPerceptualLoss(nn.Module):
+class PerceptualLPIPSLoss(nn.Module):
+    def __init__(self):
+        self.loss_func = lpips.LPIPS(net='vgg')
+
+    def forward(self, sr_relu5_1, hr_relu5_1):
+        loss = self.loss_func(sr_relu5_1, hr_relu5_1)
+        return loss
+
+
+class TPerceptualLoss(nn.Module):  # loss on transferred textures
     def __init__(self, use_S=True, type='l2'):
         super(TPerceptualLoss, self).__init__()
         self.use_S = use_S
@@ -43,40 +53,44 @@ class TPerceptualLoss(nn.Module):
         return G
 
     def forward(self, map_lv3, map_lv2, map_lv1, S, T_lv3, T_lv2, T_lv1):
-        ### S.size(): [N, 1, h, w]
+        # S.size(): [N, 1, h, w]
         if (self.use_S):
             S_lv3 = torch.sigmoid(S)
-            S_lv2 = torch.sigmoid(F.interpolate(S, size=(S.size(-2)*2, S.size(-1)*2), mode='bicubic'))
-            S_lv1 = torch.sigmoid(F.interpolate(S, size=(S.size(-2)*4, S.size(-1)*4), mode='bicubic'))
+            S_lv2 = torch.sigmoid(F.interpolate(
+                S, size=(S.size(-2)*2, S.size(-1)*2), mode='bicubic'))
+            S_lv1 = torch.sigmoid(F.interpolate(
+                S, size=(S.size(-2)*4, S.size(-1)*4), mode='bicubic'))
         else:
             S_lv3, S_lv2, S_lv1 = 1., 1., 1.
 
         if (self.type == 'l1'):
-            loss_texture  = F.l1_loss(map_lv3 * S_lv3, T_lv3 * S_lv3)
+            loss_texture = F.l1_loss(map_lv3 * S_lv3, T_lv3 * S_lv3)
             loss_texture += F.l1_loss(map_lv2 * S_lv2, T_lv2 * S_lv2)
             loss_texture += F.l1_loss(map_lv1 * S_lv1, T_lv1 * S_lv1)
             loss_texture /= 3.
         elif (self.type == 'l2'):
-            loss_texture  = F.mse_loss(map_lv3 * S_lv3, T_lv3 * S_lv3)
+            loss_texture = F.mse_loss(map_lv3 * S_lv3, T_lv3 * S_lv3)
             loss_texture += F.mse_loss(map_lv2 * S_lv2, T_lv2 * S_lv2)
             loss_texture += F.mse_loss(map_lv1 * S_lv1, T_lv1 * S_lv1)
             loss_texture /= 3.
-        
+
         return loss_texture
 
 
 class AdversarialLoss(nn.Module):
-    def __init__(self, logger, use_cpu=False, num_gpu=1, gan_type='WGAN_GP', gan_k=1, 
-        lr_dis=1e-4, train_crop_size=40):
+    def __init__(self, logger, use_cpu=False, num_gpu=1, gan_type='WGAN_GP', gan_k=1,
+                 lr_dis=1e-4, train_crop_size=40):
 
         super(AdversarialLoss, self).__init__()
         self.logger = logger
         self.gan_type = gan_type
         self.gan_k = gan_k
         self.device = torch.device('cpu' if use_cpu else 'cuda')
-        self.discriminator = discriminator.Discriminator(train_crop_size*4).to(self.device)
+        self.discriminator = discriminator.Discriminator(
+            train_crop_size*4).to(self.device)
         if (num_gpu > 1):
-            self.discriminator = nn.DataParallel(self.discriminator, list(range(num_gpu)))
+            self.discriminator = nn.DataParallel(
+                self.discriminator, list(range(num_gpu)))
         if (gan_type in ['WGAN_GP', 'GAN']):
             self.optimizer = optim.Adam(
                 self.discriminator.parameters(),
@@ -92,7 +106,7 @@ class AdversarialLoss(nn.Module):
         #     D_state_dict = torch.load(D_path)
         #     self.discriminator.load_state_dict(D_state_dict['D'])
         #     self.optimizer.load_state_dict(D_state_dict['D_optim'])
-            
+
     def forward(self, fake, real):
         fake_detach = fake.detach()
 
@@ -136,7 +150,7 @@ class AdversarialLoss(nn.Module):
 
         # Generator loss
         return loss_g
-  
+
     def state_dict(self):
         D_state_dict = self.discriminator.state_dict()
         D_optim_state_dict = self.optimizer.state_dict()
@@ -150,11 +164,12 @@ def get_loss_dict(args, logger):
     else:
         loss['rec_loss'] = ReconstructionLoss(type='l1')
     if (abs(args.per_w - 0) > 1e-8):
-        loss['per_loss'] = PerceptualLoss()
+        loss['per_loss'] = PerceptualLoss()  # TODO Change if using LPIPS
     if (abs(args.tpl_w - 0) > 1e-8):
-        loss['tpl_loss'] = TPerceptualLoss(use_S=args.tpl_use_S, type=args.tpl_type)
+        loss['tpl_loss'] = TPerceptualLoss(
+            use_S=args.tpl_use_S, type=args.tpl_type)
     if (abs(args.adv_w - 0) > 1e-8):
-        loss['adv_loss'] = AdversarialLoss(logger=logger, use_cpu=args.cpu, num_gpu=args.num_gpu, 
-            gan_type=args.GAN_type, gan_k=args.GAN_k, lr_dis=args.lr_rate_dis,
-            train_crop_size=args.train_crop_size)
+        loss['adv_loss'] = AdversarialLoss(logger=logger, use_cpu=args.cpu, num_gpu=args.num_gpu,
+                                           gan_type=args.GAN_type, gan_k=args.GAN_k, lr_dis=args.lr_rate_dis,
+                                           train_crop_size=args.train_crop_size)
     return loss
