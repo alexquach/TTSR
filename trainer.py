@@ -46,17 +46,17 @@ def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
 
     # Stack: [frame, batch_size, channels, height, width]
     # Mean: [batch_size, channels, height, width]
-    # sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
-    # S = torch.mean(torch.stack(S_list, dim=0), dim=0)
-    # T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
-    # T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
-    # T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
+    sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
+    S = torch.mean(torch.stack(S_list, dim=0), dim=0)
+    T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
+    T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
+    T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
 
-    sr = torch.mean(torch.cat(sr_list, dim=0), dim=0)
-    S = torch.mean(torch.cat(S_list, dim=0), dim=0)
-    T_lv3 = torch.mean(torch.cat(T_lv3_list, dim=0), dim=0)
-    T_lv2 = torch.mean(torch.cat(T_lv2_list, dim=0), dim=0)
-    T_lv1 = torch.mean(torch.cat(T_lv1_list, dim=0), dim=0)
+    # sr = torch.mean(torch.cat(sr_list, dim=0), dim=0)
+    # S = torch.mean(torch.cat(S_list, dim=0), dim=0)
+    # T_lv3 = torch.mean(torch.cat(T_lv3_list, dim=0), dim=0)
+    # T_lv2 = torch.mean(torch.cat(T_lv2_list, dim=0), dim=0)
+    # T_lv1 = torch.mean(torch.cat(T_lv1_list, dim=0), dim=0)
 
     # enforce backprop on the variables
     sr = Variable(sr.data, requires_grad=True)

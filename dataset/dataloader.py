@@ -2,8 +2,8 @@ from torch.utils.data import DataLoader
 from importlib import import_module
 
 
-image_dir = "./Data_CDVL_LR_MC_uf_2_ps_72_fn_6_tpn_1000.h5"
-ref_dir = "./Data_CDVL_HR_uf_2_ps_72_fn_6_tpn_1000.h5"
+image_dir = "./Data_CDVL_LR_MC_uf_frames4_ps_72_fn_6_tpn_1000.h5"
+ref_dir = "./Data_CDVL_HR_uf_frames4_ps_72_fn_6_tpn_1000.h5"
 
 
 def get_dataloader(args):
