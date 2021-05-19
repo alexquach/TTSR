@@ -144,18 +144,20 @@ def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
     T_lv2_list = T_lv2_list.permute(1, 0, 2, 3, 4)
     T_lv1_list = T_lv1_list.permute(1, 0, 2, 3, 4)
 
-    # from: [9, 5, 3, 160, 160]
-    sr_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(sr_list))
-    S_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(S_list))
-    T_lv3_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv3_list))
-    T_lv2_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv2_list))
-    T_lv1_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv1_list))
+    # # from: [9, 5, 3, 160, 160]
+    # conv1 = nn.Conv3d(5, 5, 1, stride=1).cuda()
+    # sr_list = torch.tanh(conv1(sr_list))
+    # S_list = torch.tanh(conv1(S_list))
+    # T_lv3_list = torch.tanh(conv1(T_lv3_list))
+    # T_lv2_list = torch.tanh(conv1(T_lv2_list))
+    # T_lv1_list = torch.tanh(conv1(T_lv1_list))
     #   to: [9, 5, 3, 160, 160]
-    sr_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(sr_list))
-    S_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(S_list))
-    T_lv3_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv3_list))
-    T_lv2_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv2_list))
-    T_lv1_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv1_list))
+    conv2 = nn.Conv3d(5, 1, 1, stride=1).cuda()
+    sr_list = torch.tanh(conv2(sr_list))
+    S_list = torch.tanh(conv2(S_list))
+    T_lv3_list = torch.tanh(conv2(T_lv3_list))
+    T_lv2_list = torch.tanh(conv2(T_lv2_list))
+    T_lv1_list = torch.tanh(conv2(T_lv1_list))
     #   to: [9, 1, 3, 160, 160]
     sr = sr_list.squeeze(1)
     S = S_list.squeeze(1)
