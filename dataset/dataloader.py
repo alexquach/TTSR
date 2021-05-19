@@ -23,7 +23,7 @@ def get_dataloader(args):
                                                    shuffle=False, num_workers=args.num_workers)
         dataloader = {'train': dataloader_train, 'test': dataloader_test}
 
-    if (args.dataset == 'HMDB_FLOWNET'):
+    elif (args.dataset == 'HMDB_FLOWNET'):
         # (self, image_dataset_dir, ref_dataset_dir, upscale_factor, input_transform=None, ref_transform=None)
         data_train = getattr(m, 'TrainSet')(args)
         print(data_train)
