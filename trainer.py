@@ -475,7 +475,7 @@ class Trainer():
             if (not is_init):
                 if ('per_loss' in self.loss_all):
                     if args.lpips:
-                        self.loss_all['per_loss'](sr, hr) # no adjustment because lpips requires [-1, 1]
+                        per_loss = self.args.per_w * self.loss_all['per_loss'](sr, hr) # no adjustment because lpips requires [-1, 1]
                     else:
                         sr_relu5_1 = self.vgg19((sr + 1.) / 2.)
                         with torch.no_grad():

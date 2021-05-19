@@ -21,4 +21,6 @@ python main.py --save_dir ./train/HMDB/TTSR \
                --print_every 50 \
                --save_every 10 \
                --val_every 10 \
-               --train_crop_size 40
+               --train_crop_size 40 \
+                --train_style normal \
+               --lpips True
