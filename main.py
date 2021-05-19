@@ -46,10 +46,10 @@ if __name__ == '__main__':
                 t.train_flownet(current_epoch=epoch, is_init=False)
                 if (epoch % args.val_every == 0):
                     t.evaluate_flownet(current_epoch=epoch)
-            break
-        for epoch in range(1, args.num_init_epochs+1):
-            t.train(current_epoch=epoch, is_init=True)
-        for epoch in range(1, args.num_epochs+1):
-            t.train(current_epoch=epoch, is_init=False)
-            if (epoch % args.val_every == 0):
-                t.evaluate(current_epoch=epoch)
+        else:
+            for epoch in range(1, args.num_init_epochs+1):
+                t.train(current_epoch=epoch, is_init=True)
+            for epoch in range(1, args.num_epochs+1):
+                t.train(current_epoch=epoch, is_init=False)
+                if (epoch % args.val_every == 0):
+                    t.evaluate(current_epoch=epoch)
