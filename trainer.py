@@ -224,7 +224,7 @@ class Trainer():
         self.logger.info('Epoch ' + str(current_epoch) +
                          ' evaluation process...')
 
-        if (self.args.dataset == 'HMDB'):
+        if (self.args.dataset == 'HMDB_FRAMES'):
             self.model.eval()
             with torch.no_grad():
                 psnr, ssim, cnt = 0., 0., 0

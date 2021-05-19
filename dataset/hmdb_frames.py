@@ -65,61 +65,90 @@ class ToTensor(object):
 
 
 class TestSet(Dataset):
-    def __init__(self, args, input_transform=None, ref_transform=None):
-        super(TestSet, self).__init__()
-
-        self.upsample_factor = args.upsample_factor
-
-        image_h5_file = h5py.File(args.image_dataset_dir, 'r')
-        ref_h5_file = h5py.File(args.ref_dataset_dir, 'r')
-        image_dataset = image_h5_file['data']
-        ref_dataset = ref_h5_file['data']
-
-        self.image_datasets = image_dataset
-        self.ref_datasets = ref_dataset
-        self.total_count = image_dataset.shape[0]
-
-        self.input_transform = input_transform
-        self.ref_transform = ref_transform
+    def __init__(self, args, ref_level='1', transform=transforms.Compose([ToTensor()])):
+        self.input_list = sorted(os.listdir("./test/input"))
+        self.ref_list = sorted(os.listdir("./test/ref"))
+        self.hr_list = sorted(os.listdir("./test/hr"))
+        self.transform = transform
 
     def __len__(self):
-        return self.image_datasets.shape[0]
+        return len(self.input_list)
 
-    def __getitem__(self, index):
-        hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
+    def __getitem__(self, idx):
+        # HR
+        # each block of 6 low res images shares the same HR and ref image
+        HR = imread(self.hr_list[idx])
+        HR = np.array(Image.fromarray(HR))
 
-        lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
-        lr_up = np.apply_along_axis(lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width, hr_height), Image.BICUBIC), axis=1, arr=lr))  # 5 LR_Bic_MC frames [1:5]
-        hr = self.ref_datasets[index, [4], :, :]  # HR center frame
-        ref = self.ref_datasets[index, [0], :, :]  # HR first frame
-        ref_down = np.apply_along_axis(lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width//self.upsample_factor, hr_height//self.upsample_factor), Image.BICUBIC)), axis=1, arr=ref)  # [0] #TODO change if uf is different
-        ref_dup = np.apply_along_axis(lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width, hr_height), Image.BICUBIC)), axis=1, arr=ref_down)  # [0]
-        lr = lr.astype(np.float32)
-        ref = ref.astype(np.float32)
+        # h, w = HR.shape[:2]
+        h, w, = 160, 160
+        HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
+        # HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
+        # HR = HR[:h//4*4, :w//4*4, :]
 
-        #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
-        # lr = lr / 255.0
-        #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
-        # ref = ref / 255.0
+        # LR and LR_sr
+        LR = imread(self.input_list[idx])
+        LR = np.array(Image.fromarray(LR))
+        LR = np.array(Image.fromarray(LR).resize((w//4, h//4), Image.BICUBIC))
+        LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
 
-        lr = torch.from_numpy(lr)
-        lr_up = torch.from_numpy(lr_up)
-        hr = torch.from_numpy(hr)
-        ref = torch.from_numpy(ref)
-        ref_dup = torch.from_numpy(ref_dup)
+        # Ref and Ref_sr
+        Ref = imread(self.ref_list[idx])
+        Ref = np.array(Image.fromarray(Ref))
 
-        sample = {'LR': lr,  # LR_MC
-                  'LR_sr': lr_up,  # LR_Bic_MC
-                  'HR': hr,  # HR
-                  'Ref': ref,  # HR
-                  'Ref_sr': ref_dup}  # HR_Bic
+        # h2, w2 = Ref_sub.shape[:2]
+        h2, w2 = 160, 160
+        Ref_sr = np.array(Image.fromarray(
+            Ref).resize((w2//4, h2//4), Image.BICUBIC))
+        Ref_sr = np.array(Image.fromarray(
+            Ref_sr).resize((w2, h2), Image.BICUBIC))
+
+        # complete ref and ref_sr to the same size, to use batch_size > 1
+        # Ref = np.zeros((160, 160, 3))
+        # Ref_sr = np.zeros((160, 160, 3))
+        # Ref[:h2, :w2, :] = Ref_sub
+        # Ref_sr[:h2, :w2, :] = Ref_sr_sub
+
+        # repeat channels
+        HR = np.expand_dims(HR, axis=0)
+        HR = HR.repeat(3, axis=0)
+
+        LR = np.expand_dims(LR, axis=0)
+        LR = LR.repeat(3, axis=0)
+
+        LR_sr = np.expand_dims(LR_sr, axis=0)
+        LR_sr = LR_sr.repeat(3, axis=0)
+
+        Ref = np.expand_dims(Ref, axis=0)
+        Ref = Ref.repeat(3, axis=0)
+
+        Ref_sr = np.expand_dims(Ref_sr, axis=0)
+        Ref_sr = Ref_sr.repeat(3, axis=0)
+
+        # change type
+        LR = LR.astype(np.float32)
+        LR_sr = LR_sr.astype(np.float32)
+        HR = HR.astype(np.float32)
+        Ref = Ref.astype(np.float32)
+        Ref_sr = Ref_sr.astype(np.float32)
+
+        # rgb range to [-1, 1]
+        LR = LR / 127.5 - 1.
+        LR_sr = LR_sr / 127.5 - 1.
+        HR = HR / 127.5 - 1.
+        Ref = Ref / 127.5 - 1.
+        Ref_sr = Ref_sr / 127.5 - 1.
+
+        sample = {'LR': LR,  # LR_MC
+                  'LR_sr': LR_sr,
+                  'HR': HR,  # HR
+                  'Ref': Ref,  # LR_Bic_MC
+                  'Ref_sr': Ref_sr}
 
         if self.transform:
             sample = self.transform(sample)
         return sample
+
 
 # class TrainSet(Dataset):
 #     # LR original = LR_MC
@@ -264,14 +293,15 @@ class TrainSet(Dataset):
         HR = np.array(Image.fromarray(HR))
 
         # h, w = HR.shape[:2]
-        h, w = 240, 320
+        h, w, = 160, 160
+        HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
         # HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
         # HR = HR[:h//4*4, :w//4*4, :]
 
         # LR and LR_sr
         LR = imread(self.input_list[idx])
         LR = np.array(Image.fromarray(LR))
-
+        LR = np.array(Image.fromarray(LR).resize((w//4, h//4), Image.BICUBIC))
         LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
 
         # Ref and Ref_sr
@@ -279,7 +309,7 @@ class TrainSet(Dataset):
         Ref = np.array(Image.fromarray(Ref))
 
         # h2, w2 = Ref_sub.shape[:2]
-        h2, w2 = 240, 320
+        h2, w2 = 160, 160
         Ref_sr = np.array(Image.fromarray(
             Ref).resize((w2//4, h2//4), Image.BICUBIC))
         Ref_sr = np.array(Image.fromarray(
