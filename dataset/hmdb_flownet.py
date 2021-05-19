@@ -93,6 +93,6 @@ class TrainSet(Dataset):
                   'Ref': Ref,       # [1, 3, 160, 160]
                   'Ref_sr': Ref_sr} # [1, 3, 160, 160]
 
-        if self.transform:
-            sample = self.transform(sample)
+        # if self.transform:
+        #     sample = self.transform(sample)
         return sample

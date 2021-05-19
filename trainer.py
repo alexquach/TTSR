@@ -341,14 +341,17 @@ class Trainer():
             self.optimizer.zero_grad()
 
             sample_batched = self.prepare(sample_batched)
-            lr = sample_batched['LR']           # [5, 3, 40, 40]  
-            lr_sr = sample_batched['LR_sr']     # [5, 3, 160, 160]
-            hr = sample_batched['HR']           # [1, 3, 160, 160]
-            ref = sample_batched['Ref']         # [1, 3, 160, 160]
-            ref_sr = sample_batched['Ref_sr']   # [1, 3, 160, 160]
+            lr = sample_batched['LR'].float() / 255.0           # [5, 3, 40, 40]  
+            lr_sr = sample_batched['LR_sr'].float() / 255.0     # [5, 3, 160, 160]
+            hr = sample_batched['HR'].float() / 255.0           # [1, 3, 160, 160]
+            ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
+            ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
 
             sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-                lr=lr[2], lrsr=lr_sr[2], ref=ref, refsr=ref_sr)
+                lr=lr[:, 2, :, :, :],
+                lrsr=lr_sr[:, 2, :, :, :],
+                ref=ref[:, :, :, :],
+                refsr=ref_sr[:, :, :, :])
             # hr = hr.repeat(1, 3, 1, 1)
             # TODO: make better fusion module
             # sr, S, T_lv3, T_lv2, T_lv1 = naive_averaging(
@@ -405,24 +408,29 @@ class Trainer():
         self.logger.info('Epoch ' + str(current_epoch) +
                          ' evaluation process...')
 
-        if (self.args.dataset == 'HMDB'):
+        if (self.args.dataset == 'HMDB_FLOWNET'):
             self.model.eval()
             with torch.no_grad():
                 psnr, ssim, cnt = 0., 0., 0
                 for i_batch, sample_batched in enumerate(self.dataloader['test']['1']):
                     cnt += 1
                     sample_batched = self.prepare(sample_batched)
-                    lr = sample_batched['LR']
-                    lr_sr = sample_batched['LR_sr']
-                    hr = sample_batched['HR']
-                    ref = sample_batched['Ref']
-                    ref_sr = sample_batched['Ref_sr']
-                    hr = hr.repeat(1, 3, 1, 1)
+                    lr = sample_batched['LR'].float() / 255.0           # [5, 3, 40, 40]  
+                    lr_sr = sample_batched['LR_sr'].float() / 255.0     # [5, 3, 160, 160]
+                    hr = sample_batched['HR'].float() / 255.0           # [1, 3, 160, 160]
+                    ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
+                    ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
+
+                    sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                        lr=lr[:, 2, :, :, :],
+                        lrsr=lr_sr[:, 2, :, :, :],
+                        ref=ref[:, :, :, :],
+                        refsr=ref_sr[:, :, :, :])
 
                     # sr, _, _, _, _ = naive_averaging(
                     # self.model, lr, lr_sr, hr, ref, ref_sr) TODO uncomment for modified fusion model
-                    sr, _, _, _, _ = self.model(
-                        lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+                    # sr, _, _, _, _ = self.model(
+                    #     lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
 
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5
