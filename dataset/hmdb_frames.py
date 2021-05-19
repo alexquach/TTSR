@@ -292,20 +292,20 @@ class TrainSet(Dataset):
         # Ref_sr[:h2, :w2, :] = Ref_sr_sub
 
         # repeat channels
-        HR = np.expand_dims(HR, axis=2)
-        HR = HR.repeat(3, axis=2)
+        HR = np.expand_dims(HR, axis=0)
+        HR = HR.repeat(3, axis=0)
 
-        LR = np.expand_dims(LR, axis=2)
-        LR = LR.repeat(3, axis=2)
+        LR = np.expand_dims(LR, axis=0)
+        LR = LR.repeat(3, axis=0)
 
-        LR_sr = np.expand_dims(LR_sr, axis=2)
-        LR_sr = LR_sr.repeat(3, axis=2)
+        LR_sr = np.expand_dims(LR_sr, axis=0)
+        LR_sr = LR_sr.repeat(3, axis=0)
 
-        Ref = np.expand_dims(Ref, axis=2)
-        Ref = Ref.repeat(3, axis=2)
+        Ref = np.expand_dims(Ref, axis=0)
+        Ref = Ref.repeat(3, axis=0)
 
-        Ref_sr = np.expand_dims(Ref_sr, axis=2)
-        Ref_sr = Ref_sr.repeat(3, axis=2)
+        Ref_sr = np.expand_dims(Ref_sr, axis=0)
+        Ref_sr = Ref_sr.repeat(3, axis=0)
 
         # change type
         LR = LR.astype(np.float32)

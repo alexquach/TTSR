@@ -4,7 +4,7 @@ python main.py --save_dir ./train/HMDB/TTSR \
                --log_file_name train.log \
                --num_gpu 1 \
                --num_workers 1 \
-               --dataset HMDB_frames \
+               --dataset HMDB_FRAMES \
                --image_dataset_dir ./train/input \
                --ref_dataset_dir ./train/ref \
                --hr_dataset_dir ./train/hr \
