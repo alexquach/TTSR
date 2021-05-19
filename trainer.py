@@ -68,6 +68,48 @@ def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
     return sr, S, T_lv3, T_lv2, T_lv1
 
 
+def flownet_naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
+    sr_list = []
+    S_list = []
+    T_lv3_list = []
+    T_lv2_list = []
+    T_lv1_list = []
+
+    # TODO: Make sure gradients propagate, aka not doing non-differentiable things
+
+    # for each frame
+    for i in range(5):
+        # get TTSR output for each frame
+        a, b, c, d, e = model(
+            lr=lr[:, [i], :, :, :],
+            lrsr=lr_sr[:, [i], :, :, :],
+            ref=ref[:, :, :, :],
+            refsr=ref_sr[:, :, :, :])
+        
+        sr_list.append(a)
+        S_list.append(b)
+        T_lv3_list.append(c)
+        T_lv2_list.append(d)
+        T_lv1_list.append(e)
+
+    # Stack: [frame, batch_size, channels, height, width]
+    # Mean: [batch_size, channels, height, width]
+    sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
+    S = torch.mean(torch.stack(S_list, dim=0), dim=0)
+    T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
+    T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
+    T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
+
+    # enforce backprop on the variables
+    sr = Variable(sr.data, requires_grad=True)
+    S = Variable(S.data, requires_grad=True)
+    T_lv3 = Variable(T_lv3.data, requires_grad=True)
+    T_lv2 = Variable(T_lv2.data, requires_grad=True)
+    T_lv1 = Variable(T_lv1.data, requires_grad=True)
+
+    return sr, S, T_lv3, T_lv2, T_lv1
+
+
 def conv1x1_fusion(model, lr, lr_sr, hr, ref, ref_sr):
     sr_list = []
     S_list = []
@@ -341,21 +383,20 @@ class Trainer():
             self.optimizer.zero_grad()
 
             sample_batched = self.prepare(sample_batched)
-            lr = sample_batched['LR'].float() / 255.0           # [5, 3, 40, 40]  
-            lr_sr = sample_batched['LR_sr'].float() / 255.0     # [5, 3, 160, 160]
-            hr = sample_batched['HR'].float() / 255.0           # [1, 3, 160, 160]
-            ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
-            ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
+            lr = sample_batched['LR'].float() / 255.0           # [9, 5, 3, 40, 40]  
+            lr_sr = sample_batched['LR_sr'].float() / 255.0     # [9, 5, 3, 160, 160]
+            hr = sample_batched['HR'].float() / 255.0           # [9, 3, 160, 160]
+            ref = sample_batched['Ref'].float() / 255.0         # [9, 3, 160, 160]
+            ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [9, 3, 160, 160]
 
-            sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-                lr=lr[:, 2, :, :, :],
-                lrsr=lr_sr[:, 2, :, :, :],
-                ref=ref[:, :, :, :],
-                refsr=ref_sr[:, :, :, :])
-            # hr = hr.repeat(1, 3, 1, 1)
             # TODO: make better fusion module
-            # sr, S, T_lv3, T_lv2, T_lv1 = naive_averaging(
-            # self.model, lr, lr_sr, hr, ref, ref_sr)
+            # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+            #     lr=lr[:, 2, :, :, :],
+            #     lrsr=lr_sr[:, 2, :, :, :],
+            #     ref=ref[:, :, :, :],
+            #     refsr=ref_sr[:, :, :, :])
+            sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+                self.model, lr, lr_sr, hr, ref, ref_sr)
 
             # calc loss
             is_print = ((i_batch + 1) %

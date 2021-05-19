@@ -70,7 +70,7 @@ def get_train_test_sets(args, train_test_split=0.8):
     lr_list = torch.tensor(hf.get('lr'))
     hr_list = torch.tensor(hf.get('hr'))
 
-    split_val = int(len(lr_list) * 0.8)
+    split_val = int(len(lr_list) * train_test_split)
 
     trainset = TrainSet(lr_list[:split_val], hr_list[:split_val])
     testset = TrainSet(lr_list[split_val:], hr_list[split_val:])
