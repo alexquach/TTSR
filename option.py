@@ -39,6 +39,8 @@ parser.add_argument('--hr_dataset_dir', type=str, default='./Data_CDVL_HR_uf_2_p
                     help='Directory of HR image dataset')
 parser.add_argument('--upsample_factor', type=int, default=2,
                     help='upsample factor')
+parser.add_argument('--hf5_dataset', type=str, default='./cartwheel.h5',
+                    help='hf5 dataset used to train')
 
 # dataloader setting
 parser.add_argument('--num_workers', type=int, default=4,
