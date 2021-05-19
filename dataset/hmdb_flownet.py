@@ -73,7 +73,7 @@ class TrainSet(Dataset):
         self.transform = transform
 
     def __len__(self):
-        return len(self.input_list)
+        return len(self.lr_list)
 
     def __getitem__(self, idx):
         lr_frames = self.lr_list[idx] # [5, 3, 40, 40]
