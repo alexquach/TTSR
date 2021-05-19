@@ -448,15 +448,18 @@ class Trainer():
             # ref_sr   [9, 3, 160, 160]
 
             # TODO: make better fusion module
-            # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-            #     lr=lr[:, 2, :, :, :],
-            #     lrsr=lr_sr[:, 2, :, :, :],
-            #     ref=ref[:, :, :, :],
-            #     refsr=ref_sr[:, :, :, :])
-            # sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
-            #     self.model, lr, lr_sr, hr, ref, ref_sr)
-            sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
-                self.model, lr, lr_sr, hr, ref, ref_sr)
+            if args.train_style == "normal":
+                sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                    lr=lr[:, 2, :, :, :],
+                    lrsr=lr_sr[:, 2, :, :, :],
+                    ref=ref[:, :, :, :],
+                    refsr=ref_sr[:, :, :, :])
+            elif args.train_style == "average":
+                sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+                    self.model, lr, lr_sr, hr, ref, ref_sr)
+            else:
+                sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
+                    self.model, lr, lr_sr, hr, ref, ref_sr)
 
             # calc loss
             is_print = ((i_batch + 1) %
@@ -508,7 +511,7 @@ class Trainer():
                 '/')+'/model/model_'+str(current_epoch).zfill(5)+'.pt'
             torch.save(model_state_dict, model_name)
 
-    def evaluate_flownet(self, current_epoch=0):
+    def evaluate_flownet(self, args, current_epoch=0):
         self.logger.info('Epoch ' + str(current_epoch) +
                          ' evaluation process...')
 
@@ -525,14 +528,18 @@ class Trainer():
                     ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
                     ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
 
-                    # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-                    #     lr=lr[:, 2, :, :, :],
-                    #     lrsr=lr_sr[:, 2, :, :, :],
-                    #     ref=ref[:, :, :, :],
-                    #     refsr=ref_sr[:, :, :, :])
-
-                    sr, _, _, _, _ = flownet_conv3d_1x1(
-                        self.model, lr, lr_sr, hr, ref, ref_sr)
+                    if args.train_style == "normal":
+                        sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                            lr=lr[:, 2, :, :, :],
+                            lrsr=lr_sr[:, 2, :, :, :],
+                            ref=ref[:, :, :, :],
+                            refsr=ref_sr[:, :, :, :])
+                    elif args.train_style == "average":
+                        sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+                            self.model, lr, lr_sr, hr, ref, ref_sr)
+                    else:
+                        sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
+                            self.model, lr, lr_sr, hr, ref, ref_sr)
 
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5

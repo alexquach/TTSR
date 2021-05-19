@@ -32,6 +32,7 @@ class PerceptualLoss(nn.Module):
 
 class PerceptualLPIPSLoss(nn.Module):
     def __init__(self):
+        super(PerceptualLPIPSLoss, self).__init__()
         self.loss_func = lpips.LPIPS(net='vgg')
 
     def forward(self, sr,  hr):
