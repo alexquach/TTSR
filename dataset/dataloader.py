@@ -10,7 +10,7 @@ def get_dataloader(args):
     ### import module
     m = import_module('dataset.' + args.dataset.lower())
 
-    if (args.dataset == 'HMDB'):
+    if (args.dataset == 'HMDB_FRAMES'):
         # (self, image_dataset_dir, ref_dataset_dir, upscale_factor, input_transform=None, ref_transform=None)
         data_train = getattr(m, 'TrainSet')(args)
         print(data_train)
