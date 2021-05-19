@@ -242,66 +242,6 @@ class TrainSet(Dataset):
     #         sample = self.transform(sample)
     #     return sample
 
-class FlownetTrainSet(Dataset):
-    def __init__(self, args, transform=transforms.Compose([RandomFlip(), RandomRotate(), ToTensor()])):
-        self.input_list = sorted([os.path.join(args.image_dataset_dir, 'catch', name) for name in
-                                  os.listdir(os.path.join(args.image_dataset_dir, 'catch'))])
-        self.ref_list = sorted([os.path.join(args.hr_dataset_dir, 'catch', name) for name in
-                                os.listdir(os.path.join(args.hr_dataset_dir, 'catch')) 
-                                if os.path.splitext(name)[0][-3:] != "000"])
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.input_list)
-
-    def __getitem__(self, idx):
-        # HR
-        HR = imread(self.input_list[idx])
-        h, w = HR.shape[:2]
-        # HR = HR[:h//4*4, :w//4*4, :]
-
-        # LR and LR_sr
-        LR = np.array(Image.fromarray(HR).resize((w//4, h//4), Image.BICUBIC))
-        LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
-
-        # Ref and Ref_sr
-        Ref_sub = imread(self.ref_list[idx])
-        h2, w2 = Ref_sub.shape[:2]
-        Ref_sr_sub = np.array(Image.fromarray(
-            Ref_sub).resize((w2//4, h2//4), Image.BICUBIC))
-        Ref_sr_sub = np.array(Image.fromarray(
-            Ref_sr_sub).resize((w2, h2), Image.BICUBIC))
-
-        # complete ref and ref_sr to the same size, to use batch_size > 1
-        Ref = np.zeros((160, 160, 3))
-        Ref_sr = np.zeros((160, 160, 3))
-        Ref[:h2, :w2, :] = Ref_sub
-        Ref_sr[:h2, :w2, :] = Ref_sr_sub
-
-        # change type
-        LR = LR.astype(np.float32)
-        LR_sr = LR_sr.astype(np.float32)
-        HR = HR.astype(np.float32)
-        Ref = Ref.astype(np.float32)
-        Ref_sr = Ref_sr.astype(np.float32)
-
-        # rgb range to [-1, 1]
-        LR = LR / 127.5 - 1.
-        LR_sr = LR_sr / 127.5 - 1.
-        HR = HR / 127.5 - 1.
-        Ref = Ref / 127.5 - 1.
-        Ref_sr = Ref_sr / 127.5 - 1.
-
-        sample = {'LR': LR,  # LR_MC
-                  'LR_sr': LR_sr,
-                  'HR': HR,  # HR
-                  'Ref': Ref,  # LR_Bic_MC
-                  'Ref_sr': Ref_sr}
-
-        if self.transform:
-            sample = self.transform(sample)
-        return sample
-
 # class TrainSet(Dataset):
 #     def __init__(self, args, transform=transforms.Compose([RandomFlip(), RandomRotate(), ToTensor()])):
 #         self.input_list = sorted([os.path.join(args.dataset_dir, 'train/input', name) for name in
