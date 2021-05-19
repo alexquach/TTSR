@@ -64,11 +64,23 @@ class ToTensor(object):
                 'Ref': torch.from_numpy(Ref).float(),
                 'Ref_sr': torch.from_numpy(Ref_sr).float()}
 
+def get_train_test_sets(args, train_test_split=0.8):
+
+    hf = h5py.File(args.hf5_dataset, 'r')
+    lr_list = torch.tensor(hf.get('lr'))
+    hr_list = torch.tensor(hf.get('hr'))
+
+    split_val = int(len(lr_list) * 0.8)
+
+    trainset = TrainSet(lr_list[:split_val], hr_list[:split_val])
+    testset = TrainSet(lr_list[split_val:], hr_list[split_val:])
+
+    return trainset, testset
+
 class TrainSet(Dataset):
-    def __init__(self, args, transform=transforms.Compose([RandomFlip(), RandomRotate(), ToTensor()])):
-        hf = h5py.File(args.hf5_dataset, 'r')
-        self.lr_list = torch.tensor(hf.get('lr'))
-        self.hr_list = torch.tensor(hf.get('hr'))
+    def __init__(self, lr_list, hr_list, transform=transforms.Compose([RandomFlip(), RandomRotate(), ToTensor()])):
+        self.lr_list = lr_list
+        self.hr_list = hr_list
                                 
         self.transform = transform
 
