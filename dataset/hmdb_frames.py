@@ -63,6 +63,7 @@ class ToTensor(object):
                 'Ref': torch.from_numpy(Ref).float(),
                 'Ref_sr': torch.from_numpy(Ref_sr).float()}
 
+
 class TestSet(Dataset):
     def __init__(self, args, input_transform=None, ref_transform=None):
         super(TestSet, self).__init__()
@@ -120,74 +121,72 @@ class TestSet(Dataset):
             sample = self.transform(sample)
         return sample
 
-class TrainSet(Dataset):
-    # LR original = LR_MC
-    # reference_dataset = HR
-    # reference up/down --> calculate
-    # LR upsampled = LR_Bic_MC
-    def __init__(self, args, input_transform=None, ref_transform=None):
-        super(TrainSet, self).__init__()
+# class TrainSet(Dataset):
+#     # LR original = LR_MC
+#     # reference_dataset = HR
+#     # reference up/down --> calculate
+#     # LR upsampled = LR_Bic_MC
+#     def __init__(self, args, input_transform=None, ref_transform=None):
+#         super(TrainSet, self).__init__()
 
-        self.upsample_factor = args.upsample_factor
+#         self.upsample_factor = args.upsample_factor
 
-        image_h5_file = h5py.File(args.image_dataset_dir, 'r') #dataset of individual videos
-        ref_h5_file = h5py.File(args.ref_dataset_dir, 'r')
-        image_dataset = image_h5_file['data']
-        print("img: ", image_dataset.shape)
-        die
-        ref_dataset = ref_h5_file['data']
+#         image_h5_file = h5py.File(args.image_dataset_dir, 'r') #dataset of individual videos
+#         ref_h5_file = h5py.File(args.ref_dataset_dir, 'r')
+#         image_dataset = image_h5_file['data']
+#         print("img: ", image_dataset.shape)
+#         die
+#         ref_dataset = ref_h5_file['data']
 
-        self.image_datasets = image_dataset
-        self.ref_datasets = ref_dataset
-        self.total_count = image_dataset.shape[0]
+#         self.image_datasets = image_dataset
+#         self.ref_datasets = ref_dataset
+#         self.total_count = image_dataset.shape[0]
 
-        self.input_transform = input_transform
-        self.ref_transform = ref_transform
+#         self.input_transform = input_transform
+#         self.ref_transform = ref_transform
 
-    def __len__(self):
-        return self.image_datasets.shape[0]
+#     def __len__(self):
+#         return self.image_datasets.shape[0]
 
-    def __getitem__(self, index):
-        # [total_indices, 6_frames, width, height]
-        hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
+#     def __getitem__(self, index):
+#         # [total_indices, 6_frames, width, height]
+#         hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
-        # lr = lr.astype(np.float32)
-        lr = self.image_datasets[index:index+1, 1:, :, :]  # 5 LR_MC frames [1:5]
-        lr = torch.from_numpy(lr)
+#         # lr = lr.astype(np.float32)
+#         lr = self.image_datasets[index:index+1, 1:, :, :]  # 5 LR_MC frames [1:5]
+#         lr = torch.from_numpy(lr)
 
-        # LR Scaled up (x2)
-        lr_up = F.interpolate(lr, scale_factor=2, mode="bicubic") # 5 LR_Bic_MC frames [1:5]  
-        lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
+#         # LR Scaled up (x2)
+#         lr_up = F.interpolate(lr, scale_factor=2, mode="bicubic") # 5 LR_Bic_MC frames [1:5]
+#         lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
 
-        hr = self.ref_datasets[index:index+1, [4], :, :]  # HR center frame
-        hr = hr.astype(np.float32)
-        hr = torch.from_numpy(hr)
+#         hr = self.ref_datasets[index:index+1, [4], :, :]  # HR center frame
+#         hr = hr.astype(np.float32)
+#         hr = torch.from_numpy(hr)
 
-        # Ref frame
-        ref = self.ref_datasets[index:index+1, [0], :, :]  # HR first frame
-        ref = ref.astype(np.float32)
-        ref = torch.from_numpy(ref)
-        # ref downsample
-        ref_down = F.interpolate(ref, scale_factor=0.25, mode="bicubic")  # [0]
-        # ref down + upsample
-        ref_dup = F.interpolate(ref_down, scale_factor=4, mode="bicubic") # [0]
+#         # Ref frame
+#         ref = self.ref_datasets[index:index+1, [0], :, :]  # HR first frame
+#         ref = ref.astype(np.float32)
+#         ref = torch.from_numpy(ref)
+#         # ref downsample
+#         ref_down = F.interpolate(ref, scale_factor=0.25, mode="bicubic")  # [0]
+#         # ref down + upsample
+#         ref_dup = F.interpolate(ref_down, scale_factor=4, mode="bicubic") # [0]
 
-        #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
-        # lr = lr / 255.0
-        #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
-        # ref = ref / 255.0
+#         #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
+#         # lr = lr / 255.0
+#         #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
+#         # ref = ref / 255.0
 
-        sample = {'LR': lr.squeeze(0),  # LR_MC [5]
-                  'LR_sr': lr_up.squeeze(0),  # LR_Bic_MC [5]
-                  'HR': hr.squeeze(0),  # HR [1]
-                  'Ref': ref.squeeze(0),  # HR [1]
-                  'Ref_sr': ref_dup.squeeze(0)}  # HR_Bic [1]
+#         sample = {'LR': lr.squeeze(0),  # LR_MC [5]
+#                   'LR_sr': lr_up.squeeze(0),  # LR_Bic_MC [5]
+#                   'HR': hr.squeeze(0),  # HR [1]
+#                   'Ref': ref.squeeze(0),  # HR [1]
+#                   'Ref_sr': ref_dup.squeeze(0)}  # HR_Bic [1]
 
-        # if self.transform:
-        #     sample = self.transform(sample)
-        return sample
-
-
+#         # if self.transform:
+#         #     sample = self.transform(sample)
+#         return sample
 
     # def __init__(self, args, ref_level='1', transform=transforms.Compose([ToTensor()])):
     #     self.input_list = sorted(glob.glob(os.path.join(
@@ -245,61 +244,67 @@ class TrainSet(Dataset):
     #     return sample
 
 
-# class TrainSet(Dataset):
-#     def __init__(self, args, transform=transforms.Compose([RandomFlip(), RandomRotate(), ToTensor()])):
-#         self.input_list = sorted([os.path.join(args.dataset_dir, 'train/input', name) for name in
-#                                   os.listdir(os.path.join(args.dataset_dir, 'train/input'))])
-#         self.ref_list = sorted([os.path.join(args.dataset_dir, 'train/ref', name) for name in
-#                                 os.listdir(os.path.join(args.dataset_dir, 'train/ref'))])
-#         self.transform = transform
+class TrainSet(Dataset):
+    def __init__(self, args, transform=None):
+        self.input_list = sorted([os.path.join(args.image_dataset_dir, name) for name in
+                                  os.listdir(args.image_dataset_dir)])
+        self.ref_list = sorted([os.path.join(args.ref_dataset_dir, name) for name in
+                                os.listdir(args.ref_dataset_dir)])
+        self.hr_list = sorted([os.path.join(args.hr_dataset_dir, name) for name in
+                               os.listdir(args.hr_dataset_dir)])
+        self.transform = transform
 
-#     def __len__(self):
-#         return len(self.input_list)
+    def __len__(self):
+        return len(self.input_list)
 
-#     def __getitem__(self, idx):
-#         # HR
-#         HR = imread(self.input_list[idx])
-#         h, w = HR.shape[:2]
-#         # HR = HR[:h//4*4, :w//4*4, :]
+    def __getitem__(self, idx):
+        # HR
+        # each block of 6 low res images shares the same HR and ref image
+        HR = imread(self.hr_list[idx])
+        # h, w = HR.shape[:2]
+        h, w = 240, 320
+        # HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
+        # HR = HR[:h//4*4, :w//4*4, :]
 
-#         # LR and LR_sr
-#         LR = np.array(Image.fromarray(HR).resize((w//4, h//4), Image.BICUBIC))
-#         LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
+        # LR and LR_sr
+        LR = imread(self.image_list[idx])
+        LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
 
-#         # Ref and Ref_sr
-#         Ref_sub = imread(self.ref_list[idx])
-#         h2, w2 = Ref_sub.shape[:2]
-#         Ref_sr_sub = np.array(Image.fromarray(
-#             Ref_sub).resize((w2//4, h2//4), Image.BICUBIC))
-#         Ref_sr_sub = np.array(Image.fromarray(
-#             Ref_sr_sub).resize((w2, h2), Image.BICUBIC))
+        # Ref and Ref_sr
+        Ref = imread(self.ref_list[idx])
+        # h2, w2 = Ref_sub.shape[:2]
+        h2, w2 = 240, 320
+        Ref_sr = np.array(Image.fromarray(
+            Ref).resize((w2//4, h2//4), Image.BICUBIC))
+        Ref_sr = np.array(Image.fromarray(
+            Ref_sr).resize((w2, h2), Image.BICUBIC))
 
-#         # complete ref and ref_sr to the same size, to use batch_size > 1
-#         Ref = np.zeros((160, 160, 3))
-#         Ref_sr = np.zeros((160, 160, 3))
-#         Ref[:h2, :w2, :] = Ref_sub
-#         Ref_sr[:h2, :w2, :] = Ref_sr_sub
+        # complete ref and ref_sr to the same size, to use batch_size > 1
+        # Ref = np.zeros((160, 160, 3))
+        # Ref_sr = np.zeros((160, 160, 3))
+        # Ref[:h2, :w2, :] = Ref_sub
+        # Ref_sr[:h2, :w2, :] = Ref_sr_sub
 
-#         # change type
-#         LR = LR.astype(np.float32)
-#         LR_sr = LR_sr.astype(np.float32)
-#         HR = HR.astype(np.float32)
-#         Ref = Ref.astype(np.float32)
-#         Ref_sr = Ref_sr.astype(np.float32)
+        # change type
+        LR = LR.astype(np.float32)
+        LR_sr = LR_sr.astype(np.float32)
+        HR = HR.astype(np.float32)
+        Ref = Ref.astype(np.float32)
+        Ref_sr = Ref_sr.astype(np.float32)
 
-#         # rgb range to [-1, 1]
-#         LR = LR / 127.5 - 1.
-#         LR_sr = LR_sr / 127.5 - 1.
-#         HR = HR / 127.5 - 1.
-#         Ref = Ref / 127.5 - 1.
-#         Ref_sr = Ref_sr / 127.5 - 1.
+        # rgb range to [-1, 1]
+        LR = LR / 127.5 - 1.
+        LR_sr = LR_sr / 127.5 - 1.
+        HR = HR / 127.5 - 1.
+        Ref = Ref / 127.5 - 1.
+        Ref_sr = Ref_sr / 127.5 - 1.
 
-#         sample = {'LR': LR,  # LR_MC
-#                   'LR_sr': LR_sr,
-#                   'HR': HR,  # HR
-#                   'Ref': Ref,  # LR_Bic_MC
-#                   'Ref_sr': Ref_sr}
+        sample = {'LR': LR,  # LR_MC
+                  'LR_sr': LR_sr,
+                  'HR': HR,  # HR
+                  'Ref': Ref,  # LR_Bic_MC
+                  'Ref_sr': Ref_sr}
 
-#         if self.transform:
-#             sample = self.transform(sample)
-#         return sample
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
