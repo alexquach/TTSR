@@ -111,13 +111,11 @@ def flownet_naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
 
 
 def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
-    sr_list = []
-    S_list = []
-    T_lv3_list = []
-    T_lv2_list = []
-    T_lv1_list = []
-
-    # TODO: Make sure gradients propagate, aka not doing non-differentiable things
+    sr_list = torch.tensor([], requires_grad=True).cuda()
+    S_list = torch.tensor([], requires_grad=True).cuda()
+    T_lv3_list = torch.tensor([], requires_grad=True).cuda()
+    T_lv2_list = torch.tensor([], requires_grad=True).cuda()
+    T_lv1_list = torch.tensor([], requires_grad=True).cuda()
 
     # for each frame
     for i in range(5):
@@ -128,11 +126,11 @@ def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
             ref=ref[:, :, :, :],
             refsr=ref_sr[:, :, :, :])
         
-        sr_list.append(a)
-        S_list.append(b)
-        T_lv3_list.append(c)
-        T_lv2_list.append(d)
-        T_lv1_list.append(e)
+        sr_list = torch.cat([sr_list, a.unsqueeze(0)])
+        S_list = torch.cat([S_list, b.unsqueeze(0)])
+        T_lv3_list = torch.cat([T_lv3_list, c.unsqueeze(0)])
+        T_lv2_list = torch.cat([T_lv2_list, d.unsqueeze(0)])
+        T_lv1_list = torch.cat([T_lv1_list, e.unsqueeze(0)])
 
     #[-1, 1] or [-0.5, 0.5]
 
@@ -140,16 +138,31 @@ def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
     # i.e.: [5, 9, 3, 160, 160]
     # resu: [9, 5, 3, 160, 160]
     # conv: [N, C, D, H, W]
-    sr_frames = torch.stack(sr_list, dim=0).permute(1, 0, 2, 3, 4)
-    S_frames = torch.stack(S_list, dim=0).permute(1, 0, 2, 3, 4)
-    T_lv3_frames = torch.stack(T_lv3_list, dim=0).permute(1, 0, 2, 3, 4)
-    T_lv2_frames = torch.stack(T_lv2_list, dim=0).permute(1, 0, 2, 3, 4)
-    T_lv1_frames = torch.stack(T_lv1_list, dim=0).permute(1, 0, 2, 3, 4)
+    sr_list = sr_list.permute(1, 0, 2, 3, 4)
+    S_list = S_list.permute(1, 0, 2, 3, 4)
+    T_lv3_list = T_lv3_list.permute(1, 0, 2, 3, 4)
+    T_lv2_list = T_lv2_list.permute(1, 0, 2, 3, 4)
+    T_lv1_list = T_lv1_list.permute(1, 0, 2, 3, 4)
 
-    # i.e.: [5, 9, 3, 160, 160]
-    # i.e.: [1, 9, 3, 160, 160]
-
-
+    # from: [9, 5, 3, 160, 160]
+    sr_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(sr_list))
+    S_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(S_list))
+    T_lv3_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv3_list))
+    T_lv2_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv2_list))
+    T_lv1_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv1_list))
+    #   to: [9, 5, 3, 160, 160]
+    sr_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(sr_list))
+    S_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(S_list))
+    T_lv3_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv3_list))
+    T_lv2_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv2_list))
+    T_lv1_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv1_list))
+    #   to: [9, 1, 3, 160, 160]
+    sr = sr_list.squeeze(1)
+    S = S_list.squeeze(1)
+    T_lv3 = T_lv3_list.squeeze(1)
+    T_lv2 = T_lv2_list.squeeze(1)
+    T_lv1 = T_lv1_list.squeeze(1)
+    #   to: [9, 3, 160, 160]
 
     return sr, S, T_lv3, T_lv2, T_lv1
 
@@ -438,7 +451,9 @@ class Trainer():
             #     lrsr=lr_sr[:, 2, :, :, :],
             #     ref=ref[:, :, :, :],
             #     refsr=ref_sr[:, :, :, :])
-            sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+            # sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+            #     self.model, lr, lr_sr, hr, ref, ref_sr)
+            sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
                 self.model, lr, lr_sr, hr, ref, ref_sr)
 
             # calc loss
@@ -505,16 +520,14 @@ class Trainer():
                     ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
                     ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
 
-                    sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-                        lr=lr[:, 2, :, :, :],
-                        lrsr=lr_sr[:, 2, :, :, :],
-                        ref=ref[:, :, :, :],
-                        refsr=ref_sr[:, :, :, :])
+                    # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                    #     lr=lr[:, 2, :, :, :],
+                    #     lrsr=lr_sr[:, 2, :, :, :],
+                    #     ref=ref[:, :, :, :],
+                    #     refsr=ref_sr[:, :, :, :])
 
-                    # sr, _, _, _, _ = naive_averaging(
-                    # self.model, lr, lr_sr, hr, ref, ref_sr) TODO uncomment for modified fusion model
-                    # sr, _, _, _, _ = self.model(
-                    #     lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+                    sr, _, _, _, _ = flownet_conv3d_1x1(
+                        self.model, lr, lr_sr, hr, ref, ref_sr)
 
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5
