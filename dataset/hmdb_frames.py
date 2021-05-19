@@ -261,17 +261,20 @@ class TrainSet(Dataset):
         # HR
         # each block of 6 low res images shares the same HR and ref image
         HR = imread(self.hr_list[idx])
+        HR = np.array(Image.fromarray(HR))
         # h, w = HR.shape[:2]
         h, w = 240, 320
         # HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
         # HR = HR[:h//4*4, :w//4*4, :]
 
         # LR and LR_sr
-        LR = imread(self.image_list[idx])
+        LR = imread(self.input_list[idx])
+        LR = np.array(Image.fromarray(LR))
         LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
 
         # Ref and Ref_sr
         Ref = imread(self.ref_list[idx])
+        Ref = np.array(Image.fromarray(Ref))
         # h2, w2 = Ref_sub.shape[:2]
         h2, w2 = 240, 320
         Ref_sr = np.array(Image.fromarray(

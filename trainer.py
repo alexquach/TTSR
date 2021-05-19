@@ -166,10 +166,12 @@ class Trainer():
             ref = sample_batched['Ref']
             ref_sr = sample_batched['Ref_sr']
 
-            hr = hr.repeat(1, 3, 1, 1)
+            sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+            # hr = hr.repeat(1, 3, 1, 1)
             # TODO: make better fusion module
-            sr, S, T_lv3, T_lv2, T_lv1 = naive_averaging(
-                self.model, lr, lr_sr, hr, ref, ref_sr)
+            # sr, S, T_lv3, T_lv2, T_lv1 = naive_averaging(
+            # self.model, lr, lr_sr, hr, ref, ref_sr)
 
             # calc loss
             is_print = ((i_batch + 1) %
@@ -236,8 +238,11 @@ class Trainer():
                     ref_sr = sample_batched['Ref_sr']
                     hr = hr.repeat(1, 3, 1, 1)
 
-                    sr, _, _, _, _ = naive_averaging(
-                        self.model, lr, lr_sr, hr, ref, ref_sr)
+                    # sr, _, _, _, _ = naive_averaging(
+                    # self.model, lr, lr_sr, hr, ref, ref_sr) TODO uncomment for modified fusion model
+                    sr, _, _, _, _ = self.model(
+                        lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5
                         sr_save = np.transpose(sr_save.squeeze().round(
@@ -246,8 +251,8 @@ class Trainer():
                             i_batch).zfill(5)+'.png'), sr_save)
 
                     # calculate psnr and ssim
-                    sr = sr.squeeze(0)
-                    hr = hr.squeeze(0)
+                    # sr = sr.squeeze(0)
+                    # hr = hr.squeeze(0) TODO uncomment for modified fusion model
                     _psnr, _ssim = calc_psnr_and_ssim(sr.detach(), hr.detach())
 
                     psnr += _psnr
