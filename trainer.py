@@ -69,6 +69,48 @@ def naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
 
 
 def flownet_naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
+    sr_list = torch.tensor([], requires_grad=True).cuda()
+    S_list = torch.tensor([], requires_grad=True).cuda()
+    T_lv3_list = torch.tensor([], requires_grad=True).cuda()
+    T_lv2_list = torch.tensor([], requires_grad=True).cuda()
+    T_lv1_list = torch.tensor([], requires_grad=True).cuda()
+
+    # TODO: Make sure gradients propagate, aka not doing non-differentiable things
+
+    # for each frame
+    for i in range(5):
+        # get TTSR output for each frame
+        a, b, c, d, e = model(
+            lr=lr[:, i, :, :, :],
+            lrsr=lr_sr[:, i, :, :, :],
+            ref=ref[:, :, :, :],
+            refsr=ref_sr[:, :, :, :])
+        
+        sr_list = torch.cat([sr_list, a.unsqueeze(0)])
+        S_list = torch.cat([S_list, b.unsqueeze(0)])
+        T_lv3_list = torch.cat([T_lv3_list, c.unsqueeze(0)])
+        T_lv2_list = torch.cat([T_lv2_list, d.unsqueeze(0)])
+        T_lv1_list = torch.cat([T_lv1_list, e.unsqueeze(0)])
+
+    # Stack: [frame, batch_size, channels, height, width]
+    # Mean: [batch_size, channels, height, width]
+    sr = torch.mean(sr_list, dim=0)
+    S = torch.mean(S_list, dim=0)
+    T_lv3 = torch.mean(T_lv3_list, dim=0)
+    T_lv2 = torch.mean(T_lv2_list, dim=0)
+    T_lv1 = torch.mean(T_lv1_list, dim=0)
+
+    # # enforce backprop on the variables
+    # sr = Variable(sr.data, requires_grad=True)
+    # S = Variable(S.data, requires_grad=True)
+    # T_lv3 = Variable(T_lv3.data, requires_grad=True)
+    # T_lv2 = Variable(T_lv2.data, requires_grad=True)
+    # T_lv1 = Variable(T_lv1.data, requires_grad=True)
+
+    return sr, S, T_lv3, T_lv2, T_lv1
+
+
+def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
     sr_list = []
     S_list = []
     T_lv3_list = []
@@ -81,8 +123,8 @@ def flownet_naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
     for i in range(5):
         # get TTSR output for each frame
         a, b, c, d, e = model(
-            lr=lr[:, [i], :, :, :],
-            lrsr=lr_sr[:, [i], :, :, :],
+            lr=lr[:, i, :, :, :],
+            lrsr=lr_sr[:, i, :, :, :],
             ref=ref[:, :, :, :],
             refsr=ref_sr[:, :, :, :])
         
@@ -92,23 +134,24 @@ def flownet_naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
         T_lv2_list.append(d)
         T_lv1_list.append(e)
 
-    # Stack: [frame, batch_size, channels, height, width]
-    # Mean: [batch_size, channels, height, width]
-    sr = torch.mean(torch.stack(sr_list, dim=0), dim=0)
-    S = torch.mean(torch.stack(S_list, dim=0), dim=0)
-    T_lv3 = torch.mean(torch.stack(T_lv3_list, dim=0), dim=0)
-    T_lv2 = torch.mean(torch.stack(T_lv2_list, dim=0), dim=0)
-    T_lv1 = torch.mean(torch.stack(T_lv1_list, dim=0), dim=0)
+    #[-1, 1] or [-0.5, 0.5]
 
-    # enforce backprop on the variables
-    sr = Variable(sr.data, requires_grad=True)
-    S = Variable(S.data, requires_grad=True)
-    T_lv3 = Variable(T_lv3.data, requires_grad=True)
-    T_lv2 = Variable(T_lv2.data, requires_grad=True)
-    T_lv1 = Variable(T_lv1.data, requires_grad=True)
+    # Stack: [frames, batch_size, channels, height, width]
+    # i.e.: [5, 9, 3, 160, 160]
+    # resu: [9, 5, 3, 160, 160]
+    # conv: [N, C, D, H, W]
+    sr_frames = torch.stack(sr_list, dim=0).permute(1, 0, 2, 3, 4)
+    S_frames = torch.stack(S_list, dim=0).permute(1, 0, 2, 3, 4)
+    T_lv3_frames = torch.stack(T_lv3_list, dim=0).permute(1, 0, 2, 3, 4)
+    T_lv2_frames = torch.stack(T_lv2_list, dim=0).permute(1, 0, 2, 3, 4)
+    T_lv1_frames = torch.stack(T_lv1_list, dim=0).permute(1, 0, 2, 3, 4)
+
+    # i.e.: [5, 9, 3, 160, 160]
+    # i.e.: [1, 9, 3, 160, 160]
+
+
 
     return sr, S, T_lv3, T_lv2, T_lv1
-
 
 def conv1x1_fusion(model, lr, lr_sr, hr, ref, ref_sr):
     sr_list = []
@@ -133,13 +176,7 @@ def conv1x1_fusion(model, lr, lr_sr, hr, ref, ref_sr):
         T_lv2_list.append(d)
         T_lv1_list.append(e)
 
-    # Stack: [frame, batch_size, channels, height, width]
-    # i.e.: [5, 9, 3, 72, 72]
-    sr_frames = torch.stack(sr_list, dim=0)
-    S_frames = torch.stack(S_list, dim=0)
-    T_lv3_frames = torch.stack(T_lv3_list, dim=0)
-    T_lv2_frames = torch.stack(T_lv2_list, dim=0)
-    T_lv1_frames = torch.stack(T_lv1_list, dim=0)
+
 
     return sr, S, T_lv3, T_lv2, T_lv1
 
@@ -388,6 +425,12 @@ class Trainer():
             hr = sample_batched['HR'].float() / 255.0           # [9, 3, 160, 160]
             ref = sample_batched['Ref'].float() / 255.0         # [9, 3, 160, 160]
             ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [9, 3, 160, 160]
+
+            # #input to self.model:
+            # lr       [9, 3, 40, 40]
+            # lr_sr    [9, 3, 160, 160]
+            # ref      [9, 3, 160, 160]
+            # ref_sr   [9, 3, 160, 160]
 
             # TODO: make better fusion module
             # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
