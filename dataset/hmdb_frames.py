@@ -262,8 +262,7 @@ class TrainSet(Dataset):
         # each block of 6 low res images shares the same HR and ref image
         HR = imread(self.hr_list[idx])
         HR = np.array(Image.fromarray(HR))
-        HR = HR[:, :, np.newaxis]
-        HR = HR.repeat(1, 1, 3)
+
         # h, w = HR.shape[:2]
         h, w = 240, 320
         # HR = np.array(Image.fromarray(HR).resize((w, h), Image.BICUBIC))
@@ -272,32 +271,41 @@ class TrainSet(Dataset):
         # LR and LR_sr
         LR = imread(self.input_list[idx])
         LR = np.array(Image.fromarray(LR))
-        LR = LR[:, :, np.newaxis]
-        LR = LR.repeat(1, 1, 3)
 
         LR_sr = np.array(Image.fromarray(LR).resize((w, h), Image.BICUBIC))
-        LR_sr = LR_sr[:, :, np.newaxis]
-        LR_sr = LR_sr.repeat(1, 1, 3)
 
         # Ref and Ref_sr
         Ref = imread(self.ref_list[idx])
         Ref = np.array(Image.fromarray(Ref))
-        Ref = Ref[:, :, np.newaxis]
-        Ref = Ref.repeat(1, 1, 3)
+
         # h2, w2 = Ref_sub.shape[:2]
         h2, w2 = 240, 320
         Ref_sr = np.array(Image.fromarray(
             Ref).resize((w2//4, h2//4), Image.BICUBIC))
         Ref_sr = np.array(Image.fromarray(
             Ref_sr).resize((w2, h2), Image.BICUBIC))
-        Ref_sr = Ref_sr[:, :, np.newaxis]
-        Ref_sr = Ref_sr.repeat(1, 1, 3)
 
         # complete ref and ref_sr to the same size, to use batch_size > 1
         # Ref = np.zeros((160, 160, 3))
         # Ref_sr = np.zeros((160, 160, 3))
         # Ref[:h2, :w2, :] = Ref_sub
         # Ref_sr[:h2, :w2, :] = Ref_sr_sub
+
+        # repeat channels
+        HR = np.expand_dims(HR, axis=2)
+        HR = HR.repeat(3, axis=2)
+
+        LR = np.expand_dims(LR, axis=2)
+        LR = LR.repeat(3, axis=2)
+
+        LR_sr = np.expand_dims(LR_sr, axis=2)
+        LR_sr = LR_sr.repeat(3, axis=2)
+
+        Ref = np.expand_dims(Ref, axis=2)
+        Ref = Ref.repeat(3, axis=2)
+
+        Ref_sr = np.expand_dims(Ref_sr, axis=2)
+        Ref_sr = Ref_sr.repeat(3, axis=2)
 
         # change type
         LR = LR.astype(np.float32)
