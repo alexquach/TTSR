@@ -66,11 +66,6 @@ class ToTensor(object):
 
 class TrainSet(Dataset):
     def __init__(self, args, transform=transforms.Compose([RandomFlip(), RandomRotate(), ToTensor()])):
-        # self.input_list = sorted([os.path.join(args.image_dataset_dir, 'catch', name) for name in
-        #                           os.listdir(os.path.join(args.image_dataset_dir, 'catch'))])
-        # self.ref_list = sorted([os.path.join(args.hr_dataset_dir, 'catch', name) for name in
-        #                         os.listdir(os.path.join(args.hr_dataset_dir, 'catch')) 
-        #                         if os.path.splitext(name)[0][-3:] != "000"])
         hf = h5py.File(args.hf5_dataset, 'r')
         self.lr_list = torch.tensor(hf.get('lr'))
         self.hr_list = torch.tensor(hf.get('hr'))
