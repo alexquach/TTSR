@@ -34,8 +34,8 @@ class PerceptualLPIPSLoss(nn.Module):
     def __init__(self):
         self.loss_func = lpips.LPIPS(net='vgg')
 
-    def forward(self, sr_relu5_1, hr_relu5_1):
-        loss = self.loss_func(sr_relu5_1, hr_relu5_1)
+    def forward(self, sr,  hr):
+        loss = self.loss_func(sr, hr)
         return loss
 
 
@@ -164,7 +164,7 @@ def get_loss_dict(args, logger):
     else:
         loss['rec_loss'] = ReconstructionLoss(type='l1')
     if (abs(args.per_w - 0) > 1e-8):
-        loss['per_loss'] = PerceptualLoss()  # TODO Change if using LPIPS
+        loss['per_loss'] = PerceptualLPIPSLoss() if args.lpips else PerceptualLoss()  # TODO Change if using LPIPS
     if (abs(args.tpl_w - 0) > 1e-8):
         loss['tpl_loss'] = TPerceptualLoss(
             use_S=args.tpl_use_S, type=args.tpl_type)

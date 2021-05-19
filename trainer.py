@@ -424,7 +424,7 @@ class Trainer():
 
         self.logger.info('Test over.')
 
-    def train_flownet(self, current_epoch=0, is_init=False):
+    def train_flownet(self, args, current_epoch=0, is_init=False):
         self.model.train()
         if (not is_init):
             self.scheduler.step()
@@ -471,11 +471,14 @@ class Trainer():
 
             if (not is_init):
                 if ('per_loss' in self.loss_all):
-                    sr_relu5_1 = self.vgg19((sr + 1.) / 2.)
-                    with torch.no_grad():
-                        hr_relu5_1 = self.vgg19((hr.detach() + 1.) / 2.)
-                    per_loss = self.args.per_w * \
-                        self.loss_all['per_loss'](sr_relu5_1, hr_relu5_1)
+                    if args.lpips:
+                        self.loss_all['per_loss'](sr, hr) # no adjustment because lpips requires [-1, 1]
+                    else:
+                        sr_relu5_1 = self.vgg19((sr + 1.) / 2.)
+                        with torch.no_grad():
+                            hr_relu5_1 = self.vgg19((hr.detach() + 1.) / 2.)
+                        per_loss = self.args.per_w * \
+                            self.loss_all['per_loss'](sr_relu5_1, hr_relu5_1)
                     loss += per_loss
                     if (is_print):
                         self.logger.info('per_loss: %.10f' % (per_loss.item()))

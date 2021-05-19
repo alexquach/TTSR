@@ -41,6 +41,8 @@ parser.add_argument('--upsample_factor', type=int, default=2,
                     help='upsample factor')
 parser.add_argument('--hf5_dataset', type=str, default='./cartwheel.h5',
                     help='hf5 dataset used to train')
+parser.add_argument('--lpips', type=str2bool, default=False,
+                    help='Use LPIPS Perceptual Loss')
 
 # dataloader setting
 parser.add_argument('--num_workers', type=int, default=4,
