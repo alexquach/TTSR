@@ -436,11 +436,11 @@ class Trainer():
             self.optimizer.zero_grad()
 
             sample_batched = self.prepare(sample_batched)
-            lr = sample_batched['LR'].float() / 255.0           # [9, 5, 3, 40, 40]  
-            lr_sr = sample_batched['LR_sr'].float() / 255.0     # [9, 5, 3, 160, 160]
-            hr = sample_batched['HR'].float() / 255.0           # [9, 3, 160, 160]
-            ref = sample_batched['Ref'].float() / 255.0         # [9, 3, 160, 160]
-            ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [9, 3, 160, 160]
+            lr = sample_batched['LR'].float() / 127.5 - 1           # [9, 5, 3, 40, 40]  
+            lr_sr = sample_batched['LR_sr'].float() / 127.5 - 1     # [9, 5, 3, 160, 160]
+            hr = sample_batched['HR'].float() / 127.5 - 1           # [9, 3, 160, 160]
+            ref = sample_batched['Ref'].float() / 127.5 - 1         # [9, 3, 160, 160]
+            ref_sr = sample_batched['Ref_sr'].float() / 127.5 - 1   # [9, 3, 160, 160]
 
             # #input to self.model:
             # lr       [9, 3, 40, 40]
@@ -523,11 +523,11 @@ class Trainer():
                 for i_batch, sample_batched in enumerate(self.dataloader['test']['1']):
                     cnt += 1
                     sample_batched = self.prepare(sample_batched)
-                    lr = sample_batched['LR'].float() / 255.0           # [5, 3, 40, 40]  
-                    lr_sr = sample_batched['LR_sr'].float() / 255.0     # [5, 3, 160, 160]
-                    hr = sample_batched['HR'].float() / 255.0           # [1, 3, 160, 160]
-                    ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
-                    ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
+                    lr = sample_batched['LR'].float() / 127.5 - 1           # [5, 3, 40, 40]  
+                    lr_sr = sample_batched['LR_sr'].float() / 127.5 - 1     # [5, 3, 160, 160]
+                    hr = sample_batched['HR'].float() / 127.5 - 1           # [1, 3, 160, 160]
+                    ref = sample_batched['Ref'].float() / 127.5 - 1         # [1, 3, 160, 160]
+                    ref_sr = sample_batched['Ref_sr'].float() / 127.5 - 1   # [1, 3, 160, 160]
 
                     if args.train_style == "normal":
                         sr, S, T_lv3, T_lv2, T_lv1 = self.model(
@@ -587,6 +587,9 @@ class Trainer():
         hr_video = torchvision.io.read_video(self.args.hr_path)
         hr_video = hr_video[0].permute(0, 3, 1, 2).float().to(self.device)
 
+        #         lr_video = torchvision.transforms.functional.resize(hr_video, (60, 80))
+        # print(lr_video.shape)
+
         # for each frame index
         frame_count = lr_video.shape[0]
         for i in range(frame_count):
@@ -608,11 +611,13 @@ class Trainer():
             Ref_down = torchvision.transforms.functional.resize(ref, (60, 80))
             ref_sr = torchvision.transforms.functional.resize(Ref_down, (240, 320))
 
-            lr = lr/255.0
-            lr_sr = lr_sr/255.0
-            hr = hr/255.0
-            ref = ref/255.0
-            ref_sr = ref_sr/255.0
+            # models trained on / 255
+            # pre-train on /127.5 -1
+            lr = lr.unsqueeze(0)/255.0
+            lr_sr = lr_sr.unsqueeze(0)/255.0
+            hr = hr.unsqueeze(0)/255.0
+            ref = ref.unsqueeze(0)/255.0
+            ref_sr = ref_sr.unsqueeze(0)/255.0
 
             self.model.eval()
             with torch.no_grad():
@@ -629,17 +634,13 @@ class Trainer():
                     sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
                         self.model, lr, lr_sr, hr, ref, ref_sr)
 
-                print("sr shape: ", sr.shape)
-                og_save_path = os.path.join(
-                    self.args.save_dir, 'save_results', f"og{i-3}.png")
+                sr = np.transpose(sr.squeeze().cpu().numpy(), (1, 2, 0))
                 save_path = os.path.join(
                     self.args.save_dir, 'save_results', f"{i-3}.png")
-                imsave(og_save_path, sr)
                 
                 sr_save = (sr+1.) * 127.5
-                # sr_save = np.transpose(sr_save.squeeze().round(
-                # ).cpu().numpy(), (1, 2, 0)).astype(np.uint8)
-                imsave(og_save_path, sr_save)
+
+                imsave(save_path, sr_save)
 
                 self.logger.info('output path: %s' % (save_path))
         self.logger.info('Test over.')

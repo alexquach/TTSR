@@ -22,6 +22,7 @@ if __name__ == '__main__':
     ### device and model
     device = torch.device('cpu' if args.cpu else 'cuda')
     _model = TTSR.TTSR(args).to(device)
+
     if ((not args.cpu) and (args.num_gpu > 1)):
         _model = nn.DataParallel(_model, list(range(args.num_gpu)))
 
@@ -30,6 +31,8 @@ if __name__ == '__main__':
 
     # trainer
     t = Trainer(args, _logger, _dataloader, _model, _loss_all)
+    if args.model_path != None:
+        t.load(model_path=args.model_path)
 
     ### test / eval / train
     if (args.test):
