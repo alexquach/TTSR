@@ -45,6 +45,8 @@ parser.add_argument('--train_style', type=str, default='normal',
                     help='variation to train TTSR on')
 parser.add_argument('--lpips', type=str2bool, default=False,
                     help='Use LPIPS Perceptual Loss')
+parser.add_argument('--hr_path', type=str, default='normal',
+                    help='variation to train TTSR on')
 
 # dataloader setting
 parser.add_argument('--num_workers', type=int, default=4,
@@ -123,5 +125,6 @@ parser.add_argument('--lr_path', type=str, default='./test/demo/lr/lr.png',
                     help='The path of input lr image when testing')
 parser.add_argument('--ref_path', type=str, default='./test/demo/ref/ref.png',
                     help='The path of ref image when testing')
+                    
 
 args = parser.parse_args()
