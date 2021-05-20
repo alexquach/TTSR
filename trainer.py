@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torchvision
 import torchvision.utils as utils
 from torch.autograd import Variable
 
@@ -571,59 +572,66 @@ class Trainer():
 
         self.logger.info('Evaluation over.')
 
-    def test_flownet(self):
+    def test_flownet(self, args):
         self.logger.info('Test process...')
         self.logger.info('lr path:     %s' % (self.args.lr_path))
         self.logger.info('ref path:    %s' % (self.args.ref_path))
 
-        ### LR and LR_sr
-        LR = imread(self.args.lr_path)
-        h1, w1 = LR.shape[:2]
-        LR_sr = np.array(Image.fromarray(
-            LR).resize((w1*4, h1*4), Image.BICUBIC))
+        lr_patches = []
+        hr_patches = []
 
-        ### Ref and Ref_sr
-        Ref = imread(self.args.ref_path)
-        h2, w2 = Ref.shape[:2]
-        h2, w2 = h2//4*4, w2//4*4
-        Ref = Ref[:h2, :w2, :]
-        Ref_sr = np.array(Image.fromarray(Ref).resize(
-            (w2//4, h2//4), Image.BICUBIC))
-        Ref_sr = np.array(Image.fromarray(
-            Ref_sr).resize((w2, h2), Image.BICUBIC))
+        lr_video = torchvision.io.read_video(self.args.lr_path)
+        lr_video = lr_video[0].permute(0, 3, 1, 2).float().to(self.device)
 
-        # change type
-        LR = LR.astype(np.float32)
-        LR_sr = LR_sr.astype(np.float32)
-        Ref = Ref.astype(np.float32)
-        Ref_sr = Ref_sr.astype(np.float32)
+        hr_video = torchvision.io.read_video(self.args.hr_path)
+        hr_video = hr_video[0].permute(0, 3, 1, 2).float().to(self.device)
 
-        # rgb range to [-1, 1]
-        LR = LR / 127.5 - 1.
-        LR_sr = LR_sr / 127.5 - 1.
-        Ref = Ref / 127.5 - 1.
-        Ref_sr = Ref_sr / 127.5 - 1.
+        # for each frame index
+        frame_count = lr_video.shape[0]
+        for i in range(frame_count):
+            if (i < 3) or (i > frame_count - 3):
+                continue
 
-        # to tensor
-        LR_t = torch.from_numpy(LR.transpose((2, 0, 1))).unsqueeze(
-            0).float().to(self.device)
-        LR_sr_t = torch.from_numpy(LR_sr.transpose(
-            (2, 0, 1))).unsqueeze(0).float().to(self.device)
-        Ref_t = torch.from_numpy(Ref.transpose((2, 0, 1))).unsqueeze(
-            0).float().to(self.device)
-        Ref_sr_t = torch.from_numpy(Ref_sr.transpose(
-            (2, 0, 1))).unsqueeze(0).float().to(self.device)
+            lr_frame_set = lr_video[i-2:i+3, :, :, :]
+            hr_frame_set = hr_video[[i-3, i], :, :, :]
 
-        self.model.eval()
-        with torch.no_grad():
-            sr, _, _, _, _ = self.model(
-                lr=LR_t, lrsr=LR_sr_t, ref=Ref_t, refsr=Ref_sr_t)
-            sr_save = (sr+1.) * 127.5
-            sr_save = np.transpose(sr_save.squeeze().round(
-            ).cpu().numpy(), (1, 2, 0)).astype(np.uint8)
-            save_path = os.path.join(
-                self.args.save_dir, 'save_results', os.path.basename(self.args.lr_path))
-            imsave(save_path, sr_save)
-            self.logger.info('output path: %s' % (save_path))
+            # lr_patches.append(lr_frame_set)
+            # hr_patches.append(hr_frame_set)
 
+            lr = lr_frame_set
+            lr_sr = torchvision.transforms.functional.resize(lr_frame_set, (240, 320))
+            hr = hr_frame_set[0]
+            ref = hr_frame_set[1]
+
+            Ref_down = torchvision.transforms.functional.resize(ref, (40, 40))
+            ref_sr = torchvision.transforms.functional.resize(Ref_down, (160, 160))
+
+            lr = lr/255.0
+            lr_sr = lr_sr/255.0
+            hr = hr/255.0
+            ref = ref/255.0
+            ref_sr = ref_sr/255.0
+
+            self.model.eval()
+            with torch.no_grad():
+                if args.train_style == "normal":
+                    sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                        lr=lr[:, 2, :, :, :],
+                        lrsr=lr_sr[:, 2, :, :, :],
+                        ref=ref[:, :, :, :],
+                        refsr=ref_sr[:, :, :, :])
+                elif args.train_style == "average":
+                    sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+                        self.model, lr, lr_sr, hr, ref, ref_sr)
+                else:
+                    sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
+                        self.model, lr, lr_sr, hr, ref, ref_sr)
+
+                sr_save = (sr+1.) * 127.5
+                sr_save = np.transpose(sr_save.squeeze().round(
+                ).cpu().numpy(), (1, 2, 0)).astype(np.uint8)
+                save_path = os.path.join(
+                    self.args.save_dir, 'save_results', os.path.basename(self.args.lr_path))
+                imsave(save_path, sr_save)
+                self.logger.info('output path: %s' % (save_path))
         self.logger.info('Test over.')
