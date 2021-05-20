@@ -63,75 +63,17 @@ class ToTensor(object):
                 'Ref': torch.from_numpy(Ref).float(),
                 'Ref_sr': torch.from_numpy(Ref_sr).float()}
 
+
 class TestSet(Dataset):
     def __init__(self, args, input_transform=None, ref_transform=None):
         super(TestSet, self).__init__()
 
         self.upsample_factor = args.upsample_factor
 
-        image_h5_file = h5py.File(args.image_dataset_dir, 'r')
-        ref_h5_file = h5py.File(args.ref_dataset_dir, 'r')
-        image_dataset = image_h5_file['data']
-        ref_dataset = ref_h5_file['data']
-
-        self.image_datasets = image_dataset
-        self.ref_datasets = ref_dataset
-        self.total_count = image_dataset.shape[0]
-
-        self.input_transform = input_transform
-        self.ref_transform = ref_transform
-
-    def __len__(self):
-        return self.image_datasets.shape[0]
-
-    def __getitem__(self, index):
-        hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
-
-        lr = self.image_datasets[index, 1:, :, :]  # 5 LR_MC frames [1:5]
-        lr_up = np.apply_along_axis(lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width, hr_height), Image.BICUBIC), axis=1, arr=lr))  # 5 LR_Bic_MC frames [1:5]
-        hr = self.ref_datasets[index, [4], :, :]  # HR center frame
-        ref = self.ref_datasets[index, [0], :, :]  # HR first frame
-        ref_down = np.apply_along_axis(lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width//self.upsample_factor, hr_height//self.upsample_factor), Image.BICUBIC)), axis=1, arr=ref)  # [0] #TODO change if uf is different
-        ref_dup = np.apply_along_axis(lambda x: np.array(Image.fromarray(x).resize(
-            (hr_width, hr_height), Image.BICUBIC)), axis=1, arr=ref_down)  # [0]
-        lr = lr.astype(np.float32)
-        ref = ref.astype(np.float32)
-
-        #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
-        # lr = lr / 255.0
-        #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
-        # ref = ref / 255.0
-
-        lr = torch.from_numpy(lr)
-        lr_up = torch.from_numpy(lr_up)
-        hr = torch.from_numpy(hr)
-        ref = torch.from_numpy(ref)
-        ref_dup = torch.from_numpy(ref_dup)
-
-        sample = {'LR': lr,  # LR_MC
-                  'LR_sr': lr_up,  # LR_Bic_MC
-                  'HR': hr,  # HR
-                  'Ref': ref,  # HR
-                  'Ref_sr': ref_dup}  # HR_Bic
-
-        if self.transform:
-            sample = self.transform(sample)
-        return sample
-
-class TrainSet(Dataset):
-    # LR original = LR_MC
-    # reference_dataset = HR
-    # reference up/down --> calculate
-    # LR upsampled = LR_Bic_MC
-    def __init__(self, args, input_transform=None, ref_transform=None):
-        super(TrainSet, self).__init__()
-
-        self.upsample_factor = args.upsample_factor
-
-        image_h5_file = h5py.File(args.image_dataset_dir, 'r')
-        ref_h5_file = h5py.File(args.ref_dataset_dir, 'r')
+        image_h5_file = h5py.File(
+            "/content/Data_Test_CDVL_LR_MC_uf_4_ps_160_fn_6_tpn_2000.h5", 'r')
+        ref_h5_file = h5py.File(
+            "/content/Data_Test_CDVL_HR_uf_4_ps_160_fn_6_tpn_2000.h5", 'r')
         image_dataset = image_h5_file['data']
         ref_dataset = ref_h5_file['data']
 
@@ -147,15 +89,17 @@ class TrainSet(Dataset):
 
     def __getitem__(self, index):
         # [total_indices, 6_frames, width, height]
-        hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
+        # hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
 
         # lr = lr.astype(np.float32)
-        lr = self.image_datasets[index:index+1, 1:, :, :]  # 5 LR_MC frames [1:5]
+        lr = self.image_datasets[index:index +
+                                 1, 1:, :, :]  # 5 LR_MC frames [1:5]
         lr = torch.from_numpy(lr)
 
         # LR Scaled up (x2)
-        lr_up = F.interpolate(lr, scale_factor=2, mode="bicubic") # 5 LR_Bic_MC frames [1:5]  
-        lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
+        # 5 LR_Bic_MC frames [1:5]
+        lr_up = F.interpolate(lr, scale_factor=4, mode="bicubic")
+        # lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
 
         hr = self.ref_datasets[index:index+1, [4], :, :]  # HR center frame
         hr = hr.astype(np.float32)
@@ -168,24 +112,132 @@ class TrainSet(Dataset):
         # ref downsample
         ref_down = F.interpolate(ref, scale_factor=0.25, mode="bicubic")  # [0]
         # ref down + upsample
-        ref_dup = F.interpolate(ref_down, scale_factor=4, mode="bicubic") # [0]
+        ref_dup = F.interpolate(
+            ref_down, scale_factor=4, mode="bicubic")  # [0]
 
         #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
         # lr = lr / 255.0
         #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
         # ref = ref / 255.0
 
-        sample = {'LR': lr.squeeze(0),  # LR_MC [5]
-                  'LR_sr': lr_up.squeeze(0),  # LR_Bic_MC [5]
-                  'HR': hr.squeeze(0),  # HR [1]
-                  'Ref': ref.squeeze(0),  # HR [1]
-                  'Ref_sr': ref_dup.squeeze(0)}  # HR_Bic [1]
+        lr = lr.squeeze(0)
+        lr = np.expand_dims(lr, axis=1)
+        lr = np.repeat(lr, 3, axis=1)
+
+        hr = hr.squeeze(0)
+        hr = np.expand_dims(hr, axis=1)
+        hr = np.repeat(hr, 3, axis=1)
+
+        lr_up = lr_up.squeeze(0)
+        lr_up = np.expand_dims(lr_up, axis=1)
+        lr_up = np.repeat(lr_up, 3, axis=1)
+
+        ref = ref.squeeze(0)
+        ref = np.expand_dims(ref, axis=1)
+        ref = np.repeat(ref, 3, axis=1)
+
+        ref_dup = ref_dup.squeeze(0)
+        ref_dup = np.expand_dims(ref_dup, axis=1)
+        ref_dup = np.repeat(ref_dup, 3, axis=1)
+        sample = {'LR': lr/255.,  # LR_MC [5]
+                  'LR_sr': lr_up/255.,  # LR_Bic_MC [5]
+                  'HR': hr/255.,  # HR [1]
+                  'Ref': ref/255.,  # HR [1]
+                  'Ref_sr': ref_dup/255.}  # HR_Bic [1]
 
         # if self.transform:
         #     sample = self.transform(sample)
         return sample
 
 
+class TrainSet(Dataset):
+    # LR original = LR_MC
+    # reference_dataset = HR
+    # reference up/down --> calculate
+    # LR upsampled = LR_Bic_MC
+    def __init__(self, args, input_transform=None, ref_transform=None):
+        super(TrainSet, self).__init__()
+
+        self.upsample_factor = args.upsample_factor
+
+        image_h5_file = h5py.File(
+            "/content/Data_CDVL_LR_MC_uf_4_ps_160_fn_6_tpn_5000.h5", 'r')
+        ref_h5_file = h5py.File(
+            "/content/Data_CDVL_HR_uf_4_ps_160_fn_6_tpn_5000.h5", 'r')
+        image_dataset = image_h5_file['data']
+        ref_dataset = ref_h5_file['data']
+
+        self.image_datasets = image_dataset
+        self.ref_datasets = ref_dataset
+        self.total_count = image_dataset.shape[0]
+
+        self.input_transform = input_transform
+        self.ref_transform = ref_transform
+
+    def __len__(self):
+        return self.image_datasets.shape[0]
+
+    def __getitem__(self, index):
+        # [total_indices, 6_frames, width, height]
+        # hr_height, hr_width = self.ref_datasets.shape[2], self.ref_datasets.shape[3]
+
+        # lr = lr.astype(np.float32)
+        lr = self.image_datasets[index:index +
+                                 1, 1:, :, :]  # 5 LR_MC frames [1:5]
+        lr = torch.from_numpy(lr)
+
+        # LR Scaled up (x2)
+        # 5 LR_Bic_MC frames [1:5]
+        lr_up = F.interpolate(lr, scale_factor=4, mode="bicubic")
+        # lr = F.interpolate(lr, scale_factor=0.5, mode="bicubic")
+
+        hr = self.ref_datasets[index:index+1, [4], :, :]  # HR center frame
+        hr = hr.astype(np.float32)
+        hr = torch.from_numpy(hr)
+
+        # Ref frame
+        ref = self.ref_datasets[index:index+1, [0], :, :]  # HR first frame
+        ref = ref.astype(np.float32)
+        ref = torch.from_numpy(ref)
+        # ref downsample
+        ref_down = F.interpolate(ref, scale_factor=0.25, mode="bicubic")  # [0]
+        # ref down + upsample
+        ref_dup = F.interpolate(
+            ref_down, scale_factor=4, mode="bicubic")  # [0]
+
+        #   Notice that image is the bicubic upscaled LR image patch, in float format, in range [0, 1]
+        # lr = lr / 255.0
+        #   Notice that target is the HR image patch, in uint8 format, in range [0, 255]
+        # ref = ref / 255.0
+
+        lr = lr.squeeze(0)
+        lr = np.expand_dims(lr, axis=1)
+        lr = np.repeat(lr, 3, axis=1)
+
+        hr = hr.squeeze(0)
+        hr = np.expand_dims(hr, axis=1)
+        hr = np.repeat(hr, 3, axis=1)
+
+        lr_up = lr_up.squeeze(0)
+        lr_up = np.expand_dims(lr_up, axis=1)
+        lr_up = np.repeat(lr_up, 3, axis=1)
+
+        ref = ref.squeeze(0)
+        ref = np.expand_dims(ref, axis=1)
+        ref = np.repeat(ref, 3, axis=1)
+
+        ref_dup = ref_dup.squeeze(0)
+        ref_dup = np.expand_dims(ref_dup, axis=1)
+        ref_dup = np.repeat(ref_dup, 3, axis=1)
+        sample = {'LR': lr/255.,  # LR_MC [5]
+                  'LR_sr': lr_up/255.,  # LR_Bic_MC [5]
+                  'HR': hr/255.,  # HR [1]
+                  'Ref': ref/255.,  # HR [1]
+                  'Ref_sr': ref_dup/255.}  # HR_Bic [1]
+
+        # if self.transform:
+        #     sample = self.transform(sample)
+        return sample
 
     # def __init__(self, args, ref_level='1', transform=transforms.Compose([ToTensor()])):
     #     self.input_list = sorted(glob.glob(os.path.join(

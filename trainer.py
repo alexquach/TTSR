@@ -83,9 +83,9 @@ def flownet_naive_averaging(model, lr, lr_sr, hr, ref, ref_sr):
         a, b, c, d, e = model(
             lr=lr[:, i, :, :, :],
             lrsr=lr_sr[:, i, :, :, :],
-            ref=ref[:, :, :, :],
-            refsr=ref_sr[:, :, :, :])
-        
+            ref=ref[:, 0, :, :, :],
+            refsr=ref_sr[:, 0, :, :, :])
+
         sr_list = torch.cat([sr_list, a.unsqueeze(0)])
         S_list = torch.cat([S_list, b.unsqueeze(0)])
         T_lv3_list = torch.cat([T_lv3_list, c.unsqueeze(0)])
@@ -125,7 +125,7 @@ def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
             lrsr=lr_sr[:, i, :, :, :],
             ref=ref[:, :, :, :],
             refsr=ref_sr[:, :, :, :])
-        
+
         sr_list = torch.cat([sr_list, a.unsqueeze(0)])
         S_list = torch.cat([S_list, b.unsqueeze(0)])
         T_lv3_list = torch.cat([T_lv3_list, c.unsqueeze(0)])
@@ -144,18 +144,20 @@ def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
     T_lv2_list = T_lv2_list.permute(1, 0, 2, 3, 4)
     T_lv1_list = T_lv1_list.permute(1, 0, 2, 3, 4)
 
-    # from: [9, 5, 3, 160, 160]
-    sr_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(sr_list))
-    S_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(S_list))
-    T_lv3_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv3_list))
-    T_lv2_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv2_list))
-    T_lv1_list = torch.tanh(nn.Conv3d(5, 5, 1, stride=1)(T_lv1_list))
+    # # from: [9, 5, 3, 160, 160]
+    # conv1 = nn.Conv3d(5, 5, 1, stride=1).cuda()
+    # sr_list = torch.tanh(conv1(sr_list))
+    # S_list = torch.tanh(conv1(S_list))
+    # T_lv3_list = torch.tanh(conv1(T_lv3_list))
+    # T_lv2_list = torch.tanh(conv1(T_lv2_list))
+    # T_lv1_list = torch.tanh(conv1(T_lv1_list))
     #   to: [9, 5, 3, 160, 160]
-    sr_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(sr_list))
-    S_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(S_list))
-    T_lv3_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv3_list))
-    T_lv2_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv2_list))
-    T_lv1_list = torch.tanh(nn.Conv3d(5, 1, 1, stride=1)(T_lv1_list))
+    conv2 = nn.Conv3d(5, 1, 1, stride=1).cuda()
+    sr_list = torch.tanh(conv2(sr_list))
+    S_list = torch.tanh(conv2(S_list))
+    T_lv3_list = torch.tanh(conv2(T_lv3_list))
+    T_lv2_list = torch.tanh(conv2(T_lv2_list))
+    T_lv1_list = torch.tanh(conv2(T_lv1_list))
     #   to: [9, 1, 3, 160, 160]
     sr = sr_list.squeeze(1)
     S = S_list.squeeze(1)
@@ -165,6 +167,7 @@ def flownet_conv3d_1x1(model, lr, lr_sr, hr, ref, ref_sr):
     #   to: [9, 3, 160, 160]
 
     return sr, S, T_lv3, T_lv2, T_lv1
+
 
 def conv1x1_fusion(model, lr, lr_sr, hr, ref, ref_sr):
     sr_list = []
@@ -188,8 +191,6 @@ def conv1x1_fusion(model, lr, lr_sr, hr, ref, ref_sr):
         T_lv3_list.append(c)
         T_lv2_list.append(d)
         T_lv1_list.append(e)
-
-
 
     return sr, S, T_lv3, T_lv2, T_lv1
 
@@ -258,8 +259,8 @@ class Trainer():
             ref = sample_batched['Ref']
             ref_sr = sample_batched['Ref_sr']
 
-            sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-                lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+            sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(self.model,
+                                                                 lr=lr, lr_sr=lr_sr, hr=hr, ref=ref, ref_sr=ref_sr)
             # hr = hr.repeat(1, 3, 1, 1)
             # TODO: make better fusion module
             # sr, S, T_lv3, T_lv2, T_lv1 = naive_averaging(
@@ -316,11 +317,11 @@ class Trainer():
         self.logger.info('Epoch ' + str(current_epoch) +
                          ' evaluation process...')
 
-        if (self.args.dataset == 'HMDB_FRAMES'):
+        if (self.args.dataset == 'HMDB'):
             self.model.eval()
             with torch.no_grad():
                 psnr, ssim, cnt = 0., 0., 0
-                for i_batch, sample_batched in enumerate(self.dataloader['test']['1']):
+                for i_batch, sample_batched in enumerate(self.dataloader['test']):
                     cnt += 1
                     sample_batched = self.prepare(sample_batched)
                     lr = sample_batched['LR']
@@ -328,12 +329,12 @@ class Trainer():
                     hr = sample_batched['HR']
                     ref = sample_batched['Ref']
                     ref_sr = sample_batched['Ref_sr']
-                    hr = hr.repeat(1, 3, 1, 1)
+                    # hr = hr.repeat(1, 3, 1, 1)
 
                     # sr, _, _, _, _ = naive_averaging(
                     # self.model, lr, lr_sr, hr, ref, ref_sr) TODO uncomment for modified fusion model
-                    sr, _, _, _, _ = self.model(
-                        lr=lr, lrsr=lr_sr, ref=ref, refsr=ref_sr)
+                    sr, _, _, _, _ = flownet_naive_averaging(self.model,
+                                                             lr=lr, lr_sr=lr_sr, hr=hr, ref=ref, ref_sr=ref_sr)
 
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5
@@ -344,7 +345,8 @@ class Trainer():
 
                     # calculate psnr and ssim
                     # sr = sr.squeeze(0)
-                    # hr = hr.squeeze(0) TODO uncomment for modified fusion model
+                    # TODO uncomment for modified fusion model
+                    hr = hr.squeeze(0)
                     _psnr, _ssim = calc_psnr_and_ssim(sr.detach(), hr.detach())
 
                     psnr += _psnr
@@ -422,7 +424,7 @@ class Trainer():
 
         self.logger.info('Test over.')
 
-    def train_flownet(self, current_epoch=0, is_init=False):
+    def train_flownet(self, args, current_epoch=0, is_init=False):
         self.model.train()
         if (not is_init):
             self.scheduler.step()
@@ -433,11 +435,16 @@ class Trainer():
             self.optimizer.zero_grad()
 
             sample_batched = self.prepare(sample_batched)
-            lr = sample_batched['LR'].float() / 255.0           # [9, 5, 3, 40, 40]  
-            lr_sr = sample_batched['LR_sr'].float() / 255.0     # [9, 5, 3, 160, 160]
-            hr = sample_batched['HR'].float() / 255.0           # [9, 3, 160, 160]
-            ref = sample_batched['Ref'].float() / 255.0         # [9, 3, 160, 160]
-            ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [9, 3, 160, 160]
+            # [9, 5, 3, 40, 40]
+            lr = sample_batched['LR'].float() / 255.0
+            lr_sr = sample_batched['LR_sr'].float(
+            ) / 255.0     # [9, 5, 3, 160, 160]
+            # [9, 3, 160, 160]
+            hr = sample_batched['HR'].float() / 255.0
+            ref = sample_batched['Ref'].float(
+            ) / 255.0         # [9, 3, 160, 160]
+            ref_sr = sample_batched['Ref_sr'].float(
+            ) / 255.0   # [9, 3, 160, 160]
 
             # #input to self.model:
             # lr       [9, 3, 40, 40]
@@ -446,15 +453,18 @@ class Trainer():
             # ref_sr   [9, 3, 160, 160]
 
             # TODO: make better fusion module
-            # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-            #     lr=lr[:, 2, :, :, :],
-            #     lrsr=lr_sr[:, 2, :, :, :],
-            #     ref=ref[:, :, :, :],
-            #     refsr=ref_sr[:, :, :, :])
-            # sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
-            #     self.model, lr, lr_sr, hr, ref, ref_sr)
-            sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
-                self.model, lr, lr_sr, hr, ref, ref_sr)
+            if args.train_style == "normal":
+                sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                    lr=lr[:, 2, :, :, :],
+                    lrsr=lr_sr[:, 2, :, :, :],
+                    ref=ref[:, :, :, :],
+                    refsr=ref_sr[:, :, :, :])
+            elif args.train_style == "average":
+                sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+                    self.model, lr, lr_sr, hr, ref, ref_sr)
+            else:
+                sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
+                    self.model, lr, lr_sr, hr, ref, ref_sr)
 
             # calc loss
             is_print = ((i_batch + 1) %
@@ -469,11 +479,16 @@ class Trainer():
 
             if (not is_init):
                 if ('per_loss' in self.loss_all):
-                    sr_relu5_1 = self.vgg19((sr + 1.) / 2.)
-                    with torch.no_grad():
-                        hr_relu5_1 = self.vgg19((hr.detach() + 1.) / 2.)
-                    per_loss = self.args.per_w * \
-                        self.loss_all['per_loss'](sr_relu5_1, hr_relu5_1)
+                    if args.lpips:
+                        # no adjustment because lpips requires [-1, 1]
+                        per_loss = self.args.per_w * \
+                            self.loss_all['per_loss'](sr, hr)
+                    else:
+                        sr_relu5_1 = self.vgg19((sr + 1.) / 2.)
+                        with torch.no_grad():
+                            hr_relu5_1 = self.vgg19((hr.detach() + 1.) / 2.)
+                        per_loss = self.args.per_w * \
+                            self.loss_all['per_loss'](sr_relu5_1, hr_relu5_1)
                     loss += per_loss
                     if (is_print):
                         self.logger.info('per_loss: %.10f' % (per_loss.item()))
@@ -503,7 +518,7 @@ class Trainer():
                 '/')+'/model/model_'+str(current_epoch).zfill(5)+'.pt'
             torch.save(model_state_dict, model_name)
 
-    def evaluate_flownet(self, current_epoch=0):
+    def evaluate_flownet(self, args, current_epoch=0):
         self.logger.info('Epoch ' + str(current_epoch) +
                          ' evaluation process...')
 
@@ -514,20 +529,29 @@ class Trainer():
                 for i_batch, sample_batched in enumerate(self.dataloader['test']['1']):
                     cnt += 1
                     sample_batched = self.prepare(sample_batched)
-                    lr = sample_batched['LR'].float() / 255.0           # [5, 3, 40, 40]  
-                    lr_sr = sample_batched['LR_sr'].float() / 255.0     # [5, 3, 160, 160]
-                    hr = sample_batched['HR'].float() / 255.0           # [1, 3, 160, 160]
-                    ref = sample_batched['Ref'].float() / 255.0         # [1, 3, 160, 160]
-                    ref_sr = sample_batched['Ref_sr'].float() / 255.0   # [1, 3, 160, 160]
+                    lr = sample_batched['LR'].float(
+                    ) / 255.0           # [5, 3, 40, 40]
+                    lr_sr = sample_batched['LR_sr'].float(
+                    ) / 255.0     # [5, 3, 160, 160]
+                    # [1, 3, 160, 160]
+                    hr = sample_batched['HR'].float() / 255.0
+                    ref = sample_batched['Ref'].float(
+                    ) / 255.0         # [1, 3, 160, 160]
+                    ref_sr = sample_batched['Ref_sr'].float(
+                    ) / 255.0   # [1, 3, 160, 160]
 
-                    # sr, S, T_lv3, T_lv2, T_lv1 = self.model(
-                    #     lr=lr[:, 2, :, :, :],
-                    #     lrsr=lr_sr[:, 2, :, :, :],
-                    #     ref=ref[:, :, :, :],
-                    #     refsr=ref_sr[:, :, :, :])
-
-                    sr, _, _, _, _ = flownet_conv3d_1x1(
-                        self.model, lr, lr_sr, hr, ref, ref_sr)
+                    if args.train_style == "normal":
+                        sr, S, T_lv3, T_lv2, T_lv1 = self.model(
+                            lr=lr[:, 2, :, :, :],
+                            lrsr=lr_sr[:, 2, :, :, :],
+                            ref=ref[:, :, :, :],
+                            refsr=ref_sr[:, :, :, :])
+                    elif args.train_style == "average":
+                        sr, S, T_lv3, T_lv2, T_lv1 = flownet_naive_averaging(
+                            self.model, lr, lr_sr, hr, ref, ref_sr)
+                    else:
+                        sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
+                            self.model, lr, lr_sr, hr, ref, ref_sr)
 
                     if (self.args.eval_save_results):
                         sr_save = (sr+1.) * 127.5

@@ -17,20 +17,33 @@ def get_dataloader(args):
         dataloader_train = DataLoader(
             data_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         dataloader_test = {}
-        for i in range(5):
-            data_test = getattr(m, 'TestSet')(args=args)
-            dataloader_test[str(i+1)] = DataLoader(data_test, batch_size=1,
-                                                   shuffle=False, num_workers=args.num_workers)
+        data_test = getattr(m, 'TestSet')(args=args)
+        dataloader_test = DataLoader(data_test, batch_size=1,
+                                     shuffle=False, num_workers=args.num_workers)
+        dataloader = {'train': dataloader_train, 'test': dataloader_test}
+
+    elif (args.dataset == 'HMDB'):
+        # (self, image_dataset_dir, ref_dataset_dir, upscale_factor, input_transform=None, ref_transform=None)
+        data_train = getattr(m, 'TrainSet')(args)
+        print(data_train)
+        dataloader_train = DataLoader(
+            data_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        dataloader_test = {}
+        data_test = getattr(m, 'TestSet')(args=args)
+        dataloader_test = DataLoader(data_test, batch_size=1,
+                                     shuffle=False, num_workers=args.num_workers)
         dataloader = {'train': dataloader_train, 'test': dataloader_test}
 
     elif (args.dataset == 'HMDB_FLOWNET'):
         # (self, image_dataset_dir, ref_dataset_dir, upscale_factor, input_transform=None, ref_transform=None)
-        data_train, data_test = m.get_train_test_sets(args, train_test_split=0.8)
-        
-        dataloader_train = DataLoader(data_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        data_train, data_test = m.get_train_test_sets(
+            args, train_test_split=0.8)
+
+        dataloader_train = DataLoader(
+            data_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         dataloader_test = {}
         dataloader_test['1'] = DataLoader(data_test, batch_size=1,
-                                                shuffle=False, num_workers=args.num_workers)
+                                          shuffle=False, num_workers=args.num_workers)
         dataloader = {'train': dataloader_train, 'test': dataloader_test}
 
     else:
