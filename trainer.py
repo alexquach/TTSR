@@ -589,6 +589,7 @@ class Trainer():
         # for each frame index
         frame_count = lr_video.shape[0]
         for i in range(frame_count):
+            print(i)
             if (i < 3) or (i > frame_count - 3):
                 continue
 
@@ -628,10 +629,14 @@ class Trainer():
                         self.model, lr, lr_sr, hr, ref, ref_sr)
 
                 sr_save = (sr+1.) * 127.5
+                torchvision.io.write_image(sr_save, )
+                
                 sr_save = np.transpose(sr_save.squeeze().round(
                 ).cpu().numpy(), (1, 2, 0)).astype(np.uint8)
                 save_path = os.path.join(
-                    self.args.save_dir, 'save_results', os.path.basename(self.args.lr_path))
+                    self.args.save_dir, 'save_results', f"{i-3}.png")
+
+                print(save_path)
                 imsave(save_path, sr_save)
                 self.logger.info('output path: %s' % (save_path))
         self.logger.info('Test over.')

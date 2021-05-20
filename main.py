@@ -35,7 +35,7 @@ if __name__ == '__main__':
     if (args.test):
         if (args.dataset == "HMDB_FLOWNET"):
             t.load(model_path=args.model_path)
-            t.test_flownet()
+            t.test_flownet(args)
         else:
             t.load(model_path=args.model_path)
             t.test()

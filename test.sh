@@ -8,4 +8,4 @@ python main.py --save_dir ./test/demo/output/ \
                --lr_path ./mc_testing.mp4 \
                --hr_path ./hr_testing.mp4 \
                --model_path ./TTSR.pt \
-               --train-style normal
+               --train_style normal
