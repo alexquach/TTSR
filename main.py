@@ -33,8 +33,12 @@ if __name__ == '__main__':
 
     ### test / eval / train
     if (args.test):
-        t.load(model_path=args.model_path)
-        t.test()
+        if (args.dataset == "HMDB_FLOWNET"):
+            t.load(model_path=args.model_path)
+            t.test_flownet()
+        else:
+            t.load(model_path=args.model_path)
+            t.test()
     elif (args.eval):
         t.load(model_path=args.model_path)
         t.evaluate()
