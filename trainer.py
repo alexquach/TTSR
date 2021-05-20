@@ -582,6 +582,7 @@ class Trainer():
 
         lr_video = torchvision.io.read_video(self.args.lr_path)
         lr_video = lr_video[0].permute(0, 3, 1, 2).float().to(self.device)
+        print('lr_video: ', lr_video.shape)
 
         hr_video = torchvision.io.read_video(self.args.hr_path)
         hr_video = hr_video[0].permute(0, 3, 1, 2).float().to(self.device)
@@ -604,8 +605,8 @@ class Trainer():
             hr = hr_frame_set[0]
             ref = hr_frame_set[1]
 
-            Ref_down = torchvision.transforms.functional.resize(ref, (40, 40))
-            ref_sr = torchvision.transforms.functional.resize(Ref_down, (160, 160))
+            Ref_down = torchvision.transforms.functional.resize(ref, (60, 80))
+            ref_sr = torchvision.transforms.functional.resize(Ref_down, (240, 320))
 
             lr = lr/255.0
             lr_sr = lr_sr/255.0
@@ -628,15 +629,17 @@ class Trainer():
                     sr, S, T_lv3, T_lv2, T_lv1 = flownet_conv3d_1x1(
                         self.model, lr, lr_sr, hr, ref, ref_sr)
 
-                sr_save = (sr+1.) * 127.5
-                torchvision.io.write_image(sr_save, )
-                
-                sr_save = np.transpose(sr_save.squeeze().round(
-                ).cpu().numpy(), (1, 2, 0)).astype(np.uint8)
+                print("sr shape: ", sr.shape)
+                og_save_path = os.path.join(
+                    self.args.save_dir, 'save_results', f"og{i-3}.png")
                 save_path = os.path.join(
                     self.args.save_dir, 'save_results', f"{i-3}.png")
+                imsave(og_save_path, sr)
+                
+                sr_save = (sr+1.) * 127.5
+                # sr_save = np.transpose(sr_save.squeeze().round(
+                # ).cpu().numpy(), (1, 2, 0)).astype(np.uint8)
+                imsave(og_save_path, sr_save)
 
-                print(save_path)
-                imsave(save_path, sr_save)
                 self.logger.info('output path: %s' % (save_path))
         self.logger.info('Test over.')
