@@ -36,7 +36,7 @@ class PerceptualLPIPSLoss(nn.Module):
         self.loss_func = lpips.LPIPS(net='vgg').cuda()
 
     def forward(self, sr,  hr):
-        loss = self.loss_func(sr, hr)
+        loss = torch.mean(self.loss_func(sr, hr))
         return loss
 
 
